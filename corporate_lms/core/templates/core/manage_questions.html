@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-4 shadow-sm">
+                <h5 class="fw-bold mb-3">Новый вопрос</h5>
+                <form action="{% url 'add_question' quiz.id %}" method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <textarea name="question_text" class="form-control" placeholder="Текст вопроса" required></textarea>
+                    </div>
+                    
+                    <p class="small fw-bold text-muted">ВАРИАНТЫ (выберите верный):</p>
+                    {% for i in "1234" %}
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">
+                            <input type="radio" name="correct_choice" value="{{ i }}" {% if i == "1" %}checked{% endif %}>
+                        </span>
+                        <input type="text" name="choice_{{ i }}" class="form-control" placeholder="Ответ {{ i }}" required>
+                    </div>
+                    {% endfor %}
+                    
+                    <button type="submit" class="btn btn-success w-100">Добавить вопрос</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm">
+                <h5 class="fw-bold mb-3">Текущие вопросы теста: {{ quiz.title }}</h5>
+                {% for q in questions %}
+                <div class="mb-4 p-3 border rounded">
+                    <h6>{{ forloop.counter }}. {{ q.text }}</h6>
+                    <ul class="list-unstyled ms-3">
+                        {% for choice in q.choices.all %}
+                        <li class="{% if choice.is_correct %}text-success fw-bold{% endif %}">
+                            {% if choice.is_correct %}✓{% else %}○{% endif %} {{ choice.text }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% empty %}
+                <p class="text-center text-muted">В тесте еще нет вопросов.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

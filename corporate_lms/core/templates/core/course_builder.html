@@ -1,0 +1,114 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Конструктор: <span class="text-primary">{{ course.title }}</span></h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">В панель управления</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm sticky-top" style="top: 20px;">
+                <h6 class="fw-bold mb-3 text-muted small text-uppercase">Добавить контент</h6>
+                <div class="d-grid gap-2">
+                    <button onclick="openModal('text')" class="btn btn-light text-start border"><i class="bi bi-chat-left-text me-2"></i> Текст</button>
+                    <button onclick="openModal('file')" class="btn btn-light text-start border"><i class="bi bi-file-earmark-arrow-up me-2"></i> Файл / Видео</button>
+                    <button onclick="openModal('quiz')" class="btn btn-light text-start border"><i class="bi bi-check2-square me-2"></i> Привязать тест</button>
+                    <hr>
+                    <a href="{% url 'create_quiz' course.id %}" class="btn btn-outline-primary btn-sm">Создать новый тест</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            {% for block in blocks %}
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="fw-bold mb-0">{{ block.title }}</h6>
+                        <small class="text-muted">{{ block.get_block_type_display }}</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {% if block.block_type == 'quiz' and block.content_quiz %}
+                            <a href="{% url 'manage_questions' block.content_quiz.id %}" class="btn btn-sm btn-light border">
+                                <i class="bi bi-gear"></i> Настроить вопросы
+                            </a>
+                        {% endif %}
+                        <form action="{% url 'delete_block' block.id %}" method="post" onsubmit="return confirm('Удалить этот блок?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5 border rounded bg-light">
+                <p class="text-muted">Курс пока пуст. Добавьте первый блок.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addBlockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="{% url 'add_block' course.id %}" method="post" enctype="multipart/form-data" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить контент</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="block_type" id="id_block_type">
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Заголовок блока</label>
+                    <input type="text" name="title" class="form-control" required>
+                </div>
+
+                <div id="text-fields" style="display:none;">
+                    <label class="form-label fw-bold">Текст</label>
+                    <textarea name="content_text" class="form-control" rows="5"></textarea>
+                </div>
+
+                <div id="file-fields" style="display:none;">
+                    <label class="form-label fw-bold">Выберите файл</label>
+                    <input type="file" name="content_file" class="form-control">
+                </div>
+
+                <div id="quiz-fields" style="display:none;">
+                    <label class="form-label fw-bold">Выберите готовый тест</label>
+                    <select name="content_quiz" class="form-select">
+                        <option value="">---------</option>
+                        {% for q in quizzes %}
+                        <option value="{{ q.id }}">{{ q.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Сохранить блок</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(type) {
+    // Устанавливаем тип в скрытое поле
+    document.getElementById('id_block_type').value = type;
+    
+    // Скрываем все поля
+    document.getElementById('text-fields').style.display = 'none';
+    document.getElementById('file-fields').style.display = 'none';
+    document.getElementById('quiz-fields').style.display = 'none';
+    
+    // Показываем нужное
+    if(type === 'text') document.getElementById('text-fields').style.display = 'block';
+    if(type === 'file') document.getElementById('file-fields').style.display = 'block';
+    if(type === 'quiz') document.getElementById('quiz-fields').style.display = 'block';
+    
+    new bootstrap.Modal(document.getElementById('addBlockModal')).show();
+}
+</script>
+{% endblock %}

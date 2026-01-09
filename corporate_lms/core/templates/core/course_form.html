@@ -1,0 +1,46 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <div class="mb-4 text-center">
+                    <h2 class="fw-bold">{% if course %}Редактировать курс{% else %}Новый курс{% endif %}</h2>
+                    <p class="text-muted small">Настройте основные параметры и доступ</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Название</label>
+                        {{ form.title }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Описание</label>
+                        {{ form.description }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Доступ для групп</label>
+                        {{ form.groups }}
+                        <div class="form-text small">Зажмите <b>Ctrl</b> (или Cmd на Mac), чтобы выбрать несколько групп.</div>
+                    </div>
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger small">
+                        Проверьте правильность заполнения всех полей.
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary py-2 fw-bold">Сохранить курс</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-light border py-2">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

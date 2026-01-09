@@ -1,0 +1,125 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="fw-bold">Моё обучение</h1>
+        {% if user.role == 'teacher' %}
+            <a href="{% url 'create_course' %}" class="btn btn-primary shadow-sm rounded-pill px-4">
+                <i class="bi bi-plus-lg me-2"></i>Создать курс
+            </a>
+        {% endif %}
+    </div>
+
+    {% if user.role == 'teacher' %}
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for course in courses %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover">
+                        <div class="card-body p-4">
+                            <h5 class="card-title fw-bold mb-3">{{ course.title }}</h5>
+                            <p class="card-text text-muted small">{{ course.description|truncatewords:15 }}</p>
+                            <div class="d-grid gap-2 mt-4">
+                                <a href="{% url 'course_builder' course.id %}" class="btn btn-primary rounded-pill">Конструктор</a>
+                                <a href="{% url 'edit_course' course.id %}" class="btn btn-outline-secondary btn-sm rounded-pill">Настройки</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted">Вы еще не создали ни одного курса.</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <ul class="nav nav-tabs border-0 mb-4" id="courseTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold border-0 bg-transparent position-relative px-4 pb-3" 
+                        id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">
+                    Активные курсы
+                    <span class="badge bg-primary ms-2">{{ active_courses.count }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold border-0 bg-transparent position-relative px-4 pb-3" 
+                        id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button" role="tab">
+                    Завершенные
+                    <span class="badge bg-success ms-2">{{ completed_courses.count }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="courseTabsContent">
+            <div class="tab-pane fade show active" id="active" role="tabpanel">
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    {% for course in active_courses %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover">
+                                <div class="card-body p-4 d-flex flex-column">
+                                    <h5 class="card-title fw-bold mb-3">{{ course.title }}</h5>
+                                    <p class="card-text text-muted small flex-grow-1">{{ course.description|truncatewords:20 }}</p>
+                                    <a href="{% url 'course_detail' course.id %}" class="btn btn-primary w-100 rounded-pill mt-4 shadow-sm">
+                                        Начать обучение
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-5 border rounded-4 bg-light">
+                            <i class="bi bi-book display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-3">У вас нет активных курсов.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="completed" role="tabpanel">
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    {% for course in completed_courses %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm border-0 rounded-4 bg-white border-top border-success border-4">
+                                <div class="card-body p-4">
+                                    <div class="text-success mb-2 small fw-bold">
+                                        <i class="bi bi-patch-check-fill me-1"></i> Курс пройден
+                                    </div>
+                                    <h5 class="card-title fw-bold mb-3">{{ course.title }}</h5>
+                                    <a href="{% url 'course_detail' course.id %}" class="btn btn-outline-success w-100 rounded-pill mt-3">
+                                        Повторить материал
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="col-12 text-center py-5 border rounded-4 bg-light">
+                            <i class="bi bi-trophy display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-3">Вы еще не завершили ни одного курса.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Стиль вкладок */
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border-bottom: 3px solid transparent !important;
+    }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd !important;
+        border-bottom: 3px solid #0d6efd !important;
+    }
+    /* Анимация карточек */
+    .transition-hover {
+        transition: transform 0.3s ease, shadow 0.3s ease;
+    }
+    .transition-hover:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.1) !important;
+    }
+    .card { border-radius: 20px; }
+</style>
+{% endblock %}

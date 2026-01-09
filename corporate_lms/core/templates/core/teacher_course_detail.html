@@ -1,0 +1,65 @@
+{% extends "core/base.html" %}
+{% block title %}Управление курсом: {{ course.title }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+    <li class="breadcrumb-item active">Управление: {{ course.title }}</li>
+  </ol>
+</nav>
+
+<h1>Управление курсом: {{ course.title }}</h1>
+<p class="lead">{{ course.description }}</p>
+<hr>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <a href="{% url 'add_material' course.id %}" class="btn btn-primary me-2">+ Добавить Материал</a>
+        <a href="{% url 'add_quiz' course.id %}" class="btn btn-info me-2">+ Добавить Тест</a>
+        </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Материалы ({{ course.materials.count }})</h3>
+        <ul class="list-group">
+        {% for material in course.materials.all %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ material.title }}
+                <span class="badge bg-secondary rounded-pill">
+                    {% if material.file %}Файл{% else %}Текст{% endif %}
+                </span>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Материалов нет.</li>
+        {% endfor %}
+        </ul>
+    </div>
+    
+    <div class="col-md-6">
+        <h3>Тесты ({{ course.quizzes.count }})</h3>
+        <ul class="list-group">
+        {% for quiz in course.quizzes.all %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ quiz.title }}
+                <span class="badge bg-success rounded-pill">
+                    {{ quiz.questions.count }} Вопросов
+                </span>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">Тестов нет.</li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<h3 class="mt-4">Назначенные группы</h3>
+<ul>
+    {% for group in course.groups.all %}
+        <li>{{ group.name }}</li>
+    {% empty %}
+        <li>Курс не назначен ни одной группе.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none">Мои курсы</a></li>
+            <li class="breadcrumb-item active">{{ course.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <h1 class="fw-bold mb-4">{{ course.title }}</h1>
+            
+            {% for block in blocks %}
+            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+                    <h4 class="fw-bold border-bottom pb-3 mb-4 text-primary">{{ block.title }}</h4>
+                    
+                    {% if block.block_type == 'text' %}
+                        <div class="fs-5" style="line-height: 1.7;">{{ block.content_text|linebreaks }}</div>
+                    
+                    {% elif block.block_type == 'file' and block.content_file %}
+                        <div class="text-center">
+                            {% with f=block.content_file.url|lower %}
+                                {% if ".jpg" in f or ".png" in f or ".jpeg" in f or ".webp" in f %}
+                                    <img src="{{ block.content_file.url }}" class="img-fluid rounded shadow-sm">
+                                {% elif ".mp4" in f or ".webm" in f %}
+                                    <div class="ratio ratio-16x9 shadow-sm rounded">
+                                        <video controls class="rounded">
+                                            <source src="{{ block.content_file.url }}" type="video/mp4">
+                                        </video>
+                                    </div>
+                                {% elif ".mp3" in f or ".wav" in f or ".m4a" in f %}
+                                    <div class="p-3 bg-light rounded-pill shadow-sm">
+                                        <audio controls class="w-100">
+                                            <source src="{{ block.content_file.url }}" type="audio/mpeg">
+                                        </audio>
+                                    </div>
+                                {% else %}
+                                    <div class="p-3 bg-light rounded border border-dashed">
+                                        <i class="bi bi-file-earmark-arrow-down fs-2 text-secondary d-block mb-2"></i>
+                                        <a href="{{ block.content_file.url }}" class="btn btn-outline-primary" download>Скачать материал</a>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    
+                    {% elif block.block_type == 'quiz' %}
+                        <div class="text-center py-4 bg-light rounded border">
+                            {% if block.content_quiz %}
+                                {% if block.content_quiz.id in passed_quiz_ids %}
+                                    <p class="text-success fw-bold mb-0">
+                                        <i class="bi bi-check-circle-fill me-2"></i>Тест "{{ block.content_quiz.title }}" пройден
+                                    </p>
+                                {% else %}
+                                    <a href="{% url 'take_quiz' block.content_quiz.id %}" class="btn btn-warning shadow-sm px-4 fw-bold">
+                                        Пройти тест: {{ block.content_quiz.title }}
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-muted mb-0 small">
+                                    <i class="bi bi-info-circle me-1"></i> Тест еще не привязан к этому блоку
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x display-1 text-light"></i>
+                <p class="text-muted fs-5 mt-3">В этом курсе пока нет учебных материалов.</p>
+            </div>
+            {% endfor %}
+
+            <div class="card shadow-sm border-0 bg-white p-4 mb-5 mt-5" style="border-radius: 15px;">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        {% if is_completed %}
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success-subtle rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
+                                     style="width: 60px; height: 60px;">
+                                    <i class="bi bi-trophy-fill text-success fs-3"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h4 class="fw-bold text-dark mb-1">Поздравляем с окончанием!</h4>
+                                    <p class="text-muted mb-0">Вы полностью освоили программу и завершили этот курс.</p>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary-subtle rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
+                                     style="width: 60px; height: 60px;">
+                                    <i class="bi bi-flag-fill text-primary fs-3"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h4 class="fw-bold text-dark mb-1">Финальный шаг</h4>
+                                    {% if all_quizzes_passed %}
+                                        <p class="text-muted mb-0 text-success">Все требования выполнены. Можно завершать!</p>
+                                    {% else %}
+                                        <p class="text-danger mb-0 small">Необходимо пройти все тесты для завершения курса.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                        {% if is_completed %}
+                            <div class="text-success fw-bold p-2 bg-light rounded shadow-sm d-inline-block border border-success-subtle">
+                                <i class="bi bi-check2-all me-1"></i> Пройдено {{ completion.completed_at|date:"d.m.Y" }}
+                            </div>
+                        {% elif all_quizzes_passed %}
+                            <form action="{% url 'complete_course' course.id %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm rounded-pill">
+                                    Завершить курс
+                                </button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-outline-secondary px-4 py-2 disabled rounded-pill" style="opacity: 0.5;">
+                                Завершить курс
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Плавные переходы для кнопок и карточек */
+    .btn, .card { transition: all 0.2s ease-in-out; }
+    
+    /* Стилизация видеоплеера */
+    video { width: 100%; height: auto; outline: none; }
+    
+    /* Запрет на растяжение иконки */
+    .flex-shrink-0 i { line-height: 0; }
+</style>
+{% endblock %}

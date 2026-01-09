@@ -1,0 +1,23 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="fw-bold mb-4">Создание нового теста</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">НАЗВАНИЕ ТЕСТА</label>
+                        {{ form.title }}
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary py-2">Создать тест и добавить вопросы</button>
+                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

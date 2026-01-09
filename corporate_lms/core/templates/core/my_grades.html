@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block content %}
+<h2 class="fw-bold mb-4">Мои результаты</h2>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Тест</th>
+                    <th>Курс</th>
+                    <th>Результат (баллы)</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in results %}
+                <tr>
+                    <td class="ps-4 fw-bold">{{ res.quiz.title }}</td>
+                    <td>{{ res.quiz.course.title }}</td>
+                    <td><span class="badge bg-success rounded-pill px-3">{{ res.score }}</span></td>
+                    <td class="text-muted small">{{ res.completed_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-4 text-muted">Вы пока не проходили тесты.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
