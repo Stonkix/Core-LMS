@@ -4,9 +4,9 @@ from pathlib import Path
 # Корень проекта
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-local-dev-key'
+SECRET_KEY = 'gpt_9yWc8UOsBPcSsQEcTLBgDfjLF3ac5lptJLTkSmRCFxeRo7r6GhnkNGBpchXc_OU'
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
