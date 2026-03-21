@@ -835,7 +835,10 @@ def admin_edit_user(request, user_id):
             if new_password:
                 user.set_password(new_password)
             user.save()
-            form.save_m2m()
+            # Явно устанавливаем группы из формы
+            groups_selected = form.cleaned_data.get('groups')
+            if groups_selected is not None:
+                user.groups.set(groups_selected)
             messages.success(request, f'Пользователь {user.username} обновлён.')
             return redirect('admin_panel')
     else:

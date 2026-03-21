@@ -189,5 +189,8 @@ def delete_old_avatar(sender, instance, **kwargs):
     old_avatar = old_user.avatar
     new_avatar = instance.avatar
     if old_avatar and old_avatar != new_avatar:
-        if os.path.isfile(old_avatar.path):
-            os.remove(old_avatar.path)
+        try:
+            if os.path.isfile(old_avatar.path):
+                os.remove(old_avatar.path)
+        except (ValueError, OSError):
+            pass

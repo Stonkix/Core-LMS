@@ -197,6 +197,7 @@ class AdminUserEditForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
+        # groups намеренно НЕ в fields — управляем вручную через cleaned_data
         fields = ['username', 'first_name', 'last_name', 'email', 'role', 'is_staff']
         widgets = {
             'username':   forms.TextInput(attrs={'class': 'form-control'}),
@@ -208,5 +209,6 @@ class AdminUserEditForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Подставляем текущие группы пользователя как начальное значение
         if self.instance and self.instance.pk:
-            self.fields['groups'].initial = self.instance.groups.all()
+            self.fields['groups'].initial = self.instance.groups.values_list('pk', flat=True)
