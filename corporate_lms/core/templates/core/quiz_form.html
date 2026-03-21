@@ -1,19 +1,61 @@
 {% extends "core/base.html" %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-7">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <h3 class="fw-bold mb-4">Создание нового теста</h3>
                 <form method="post">
                     {% csrf_token %}
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">НАЗВАНИЕ ТЕСТА</label>
                         {{ form.title }}
                     </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">МАКСИМУМ ПОПЫТОК</label>
+                        {{ form.max_attempts }}
+                        <div class="form-text">0 — неограниченное количество попыток.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            {{ form.shuffle_questions }}
+                            <label class="form-check-label fw-semibold"
+                                   for="{{ form.shuffle_questions.id_for_label }}">
+                                Перемешивать вопросы
+                            </label>
+                        </div>
+                        <div class="form-text">Каждый студент получит вопросы в случайном порядке.</div>
+                    </div>
+
+                    <!-- Даты теста -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+                            <i class="bi bi-calendar-range me-2"></i>Период доступности теста
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Открывается</label>
+                                {{ form.available_from }}
+                                <div class="form-text">Пусто — доступен сразу</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Закрывается</label>
+                                {{ form.available_until }}
+                                <div class="form-text">Пусто — без дедлайна</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary py-2">Создать тест и добавить вопросы</button>
-                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">Отмена</a>
+                        <button type="submit" class="btn btn-primary py-2">
+                            Создать тест и добавить вопросы
+                        </button>
+                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">
+                            Отмена
+                        </a>
                     </div>
                 </form>
             </div>

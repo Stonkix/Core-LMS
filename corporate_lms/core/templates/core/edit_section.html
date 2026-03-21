@@ -1,0 +1,232 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'course_builder' course.id %}" class="text-decoration-none">
+                    Конструктор: {{ course.title }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active">{{ section.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Сайдбар -->
+        <div class="col-md-4">
+            <div class="card p-3 shadow-sm sticky-top" style="top:20px;">
+
+                <!-- Переименовать раздел -->
+                <h6 class="fw-bold mb-3 text-muted small text-uppercase">Название раздела</h6>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="rename" value="1">
+                    <div class="input-group mb-3">
+                        <input type="text" name="title" class="form-control"
+                               value="{{ section.title }}" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <!-- Добавить блок в раздел -->
+                <h6 class="fw-bold mb-3 text-muted small text-uppercase">Добавить блок</h6>
+                <div class="d-grid gap-2">
+                    <button onclick="openModal('text')" class="btn btn-light text-start border">
+                        <i class="bi bi-chat-left-text me-2 text-primary"></i>Текст
+                    </button>
+                    <button onclick="openModal('file')" class="btn btn-light text-start border">
+                        <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Файл / Видео
+                    </button>
+                    <button onclick="openModal('quiz')" class="btn btn-light text-start border">
+                        <i class="bi bi-check2-square me-2 text-warning"></i>Привязать тест
+                    </button>
+                    <button onclick="openModal('assignment')" class="btn btn-light text-start border">
+                        <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
+                    </button>
+                </div>
+
+                <hr>
+                <a href="{% url 'create_quiz' course.id %}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-plus-lg me-1"></i>Создать новый тест
+                </a>
+            </div>
+        </div>
+
+        <!-- Блоки раздела -->
+        <div class="col-md-8">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
+                     style="width:40px;height:40px;flex-shrink:0;">
+                    <i class="bi bi-book-fill text-white"></i>
+                </div>
+                <h3 class="fw-bold mb-0">{{ section.title }}</h3>
+                <span class="badge bg-light text-muted border ms-auto">
+                    {{ blocks.count }} блоков
+                </span>
+            </div>
+
+            <div id="saveIndicator" class="alert alert-success py-2 px-3 mb-3 d-none">
+                <i class="bi bi-check2 me-2"></i>Порядок сохранён
+            </div>
+
+            <div id="blocksList">
+                {% for block in blocks %}
+                {% include "core/block_card.html" %}
+                {% empty %}
+                <div class="text-center py-5 border rounded-3 bg-light">
+                    <i class="bi bi-layout-text-sidebar display-4 text-muted opacity-25"></i>
+                    <p class="text-muted mt-3">Раздел пуст. Добавьте первый блок.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка добавления блока -->
+<div class="modal fade" id="addBlockModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="{% url 'add_block' course.id %}" method="post"
+              enctype="multipart/form-data" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="block_type" id="id_block_type">
+            <input type="hidden" name="section_id" value="{{ section.id }}">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Добавить блок</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 p-2 bg-primary-subtle rounded-3 border border-primary-subtle">
+                    <small class="text-primary">
+                        <i class="bi bi-book me-1"></i>
+                        Добавляется в раздел: <strong>{{ section.title }}</strong>
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Заголовок блока</label>
+                    <input type="text" name="title" class="form-control" required placeholder="Введите название...">
+                </div>
+                <div id="text-fields" style="display:none;">
+                    <label class="form-label fw-bold">Текст</label>
+                    <textarea name="content_text" class="form-control" rows="5"></textarea>
+                </div>
+                <div id="file-fields" style="display:none;">
+                    <label class="form-label fw-bold">Выберите файл</label>
+                    <input type="file" name="content_file" id="fileInput" class="form-control">
+                    <div id="fileInfo" class="mt-1" style="display:none;">
+                        <small id="fileName" class="text-muted"></small>
+                        <small id="fileSize" class="text-muted ms-2"></small>
+                    </div>
+                </div>
+                <div id="quiz-fields" style="display:none;">
+                    <label class="form-label fw-bold">Выберите тест</label>
+                    <select name="content_quiz" class="form-select">
+                        <option value="">— выберите тест —</option>
+                        {% for q in quizzes %}
+                        <option value="{{ q.id }}">{{ q.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="assignment-fields" style="display:none;">
+                    <div class="p-3 bg-light rounded-3 border text-muted small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        После создания откроется настройка задания.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить блок</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.block-card { cursor:default; transition:box-shadow .15s,transform .15s; border-radius:10px !important; }
+.block-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08) !important; }
+.block-card.dragging { opacity:.35; transform:scale(.98); }
+.block-card.drag-over-top { border-top:3px solid #0d6efd !important; }
+.block-card.drag-over-bottom { border-bottom:3px solid #0d6efd !important; }
+.drag-handle { cursor:grab; opacity:.3; transition:opacity .15s; }
+.block-card:hover .drag-handle { opacity:.7; }
+.type-badge { width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center; }
+</style>
+
+<script>
+const TITLES = {text:'Текст',file:'Файл / Видео',quiz:'Тест',assignment:'Задание'};
+
+function openModal(type) {
+    document.getElementById('modalTitle').textContent = TITLES[type] || 'Блок';
+    document.getElementById('id_block_type').value = type;
+    ['text','file','quiz','assignment'].forEach(t =>
+        document.getElementById(t+'-fields').style.display = 'none');
+    document.getElementById(type+'-fields').style.display = 'block';
+    document.getElementById('fileInfo').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('addBlockModal')).show();
+}
+
+document.getElementById('fileInput').addEventListener('change', function() {
+    const f = this.files[0];
+    const info = document.getElementById('fileInfo');
+    if (!f) { info.style.display='none'; return; }
+    document.getElementById('fileName').textContent = f.name;
+    document.getElementById('fileSize').textContent = (f.size/1024/1024).toFixed(1)+' МБ';
+    info.style.display = 'block';
+});
+
+// Drag-and-drop блоков
+const list = document.getElementById('blocksList');
+let src = null;
+
+list.addEventListener('dragstart', e => {
+    const card = e.target.closest('.block-card');
+    if (!card) return;
+    src = card;
+    requestAnimationFrame(() => card.classList.add('dragging'));
+    e.dataTransfer.effectAllowed = 'move';
+});
+list.addEventListener('dragend', () => {
+    if (src) src.classList.remove('dragging');
+    list.querySelectorAll('.block-card').forEach(c =>
+        c.classList.remove('drag-over-top','drag-over-bottom'));
+    src = null;
+    saveOrder();
+});
+list.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (!src) return;
+    const card = e.target.closest('.block-card');
+    if (!card || card === src) return;
+    list.querySelectorAll('.block-card').forEach(c =>
+        c.classList.remove('drag-over-top','drag-over-bottom'));
+    const mid = card.getBoundingClientRect().top + card.getBoundingClientRect().height/2;
+    if (e.clientY < mid) { card.classList.add('drag-over-top'); list.insertBefore(src, card); }
+    else { card.classList.add('drag-over-bottom'); list.insertBefore(src, card.nextSibling); }
+});
+list.addEventListener('drop', e => e.preventDefault());
+
+function saveOrder() {
+    const ids = [...list.querySelectorAll('.block-card')]
+        .map(c => c.dataset.blockId).filter(Boolean);
+    if (!ids.length) return;
+    fetch('{% url "reorder_blocks" course.id %}', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
+        body: JSON.stringify({order: ids}),
+    }).then(r=>r.json()).then(d=>{
+        if (d.ok) {
+            const el = document.getElementById('saveIndicator');
+            el.classList.remove('d-none');
+            setTimeout(() => el.classList.add('d-none'), 2000);
+        }
+    }).catch(()=>{});
+}
+</script>
+{% endblock %}

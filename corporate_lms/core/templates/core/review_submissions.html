@@ -1,0 +1,95 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">{{ assignment.block.title }}</h3>
+            <p class="text-muted mb-0">
+                Работы студентов · Макс. балл: {{ assignment.max_score }}
+            </p>
+        </div>
+        <a href="{% url 'course_builder' assignment.block.course.id %}"
+           class="btn btn-outline-secondary btn-sm">← Конструктор</a>
+    </div>
+
+    {% if submissions %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr class="small text-uppercase text-muted">
+                        <th class="ps-4">Студент</th>
+                        <th>Ответ</th>
+                        <th>Файл</th>
+                        <th class="text-center">Статус</th>
+                        <th class="text-center">Оценка</th>
+                        <th class="text-center">Отправлено</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="fw-semibold">
+                                {{ sub.student.get_full_name|default:sub.student.username }}
+                            </div>
+                            <small class="text-muted">{{ sub.student.username }}</small>
+                        </td>
+                        <td style="max-width:200px;">
+                            <div class="text-truncate small text-muted">
+                                {{ sub.text|default:"—" }}
+                            </div>
+                        </td>
+                        <td>
+                            {% if sub.file %}
+                            <a href="{{ sub.file.url }}" target="_blank"
+                               class="btn btn-sm btn-light border">
+                                <i class="bi bi-paperclip"></i>
+                            </a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if sub.status == 'graded' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                Проверено
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                На проверке
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center fw-bold">
+                            {% if sub.score is not None %}
+                                {{ sub.score }} / {{ assignment.max_score }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-center small">
+                            {{ sub.submitted_at|date:"d.m.Y H:i" }}
+                            {% if sub.is_late %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1">
+                                опоздание
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3">
+                            <a href="{% url 'grade_submission' sub.id %}"
+                               class="btn btn-sm btn-primary">
+                                {% if sub.status == 'graded' %}Изменить{% else %}Проверить{% endif %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5 border rounded-4 bg-light">
+        <i class="bi bi-inbox display-4 text-muted opacity-25"></i>
+        <p class="text-muted mt-3">Пока никто не сдал работу.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

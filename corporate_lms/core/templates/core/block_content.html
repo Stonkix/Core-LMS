@@ -1,0 +1,125 @@
+{% load core_extras %}
+<div class="card shadow-sm border-0 mb-3 overflow-hidden">
+    <div class="card-body p-4">
+        <h5 class="fw-bold border-bottom pb-2 mb-3 text-primary">{{ block.title }}</h5>
+
+        {% if block.block_type == 'text' %}
+            <div style="line-height:1.7;">{{ block.content_text|linebreaks }}</div>
+
+        {% elif block.block_type == 'file' and block.content_file %}
+            <div class="text-center">
+                {% with f=block.content_file.url|lower %}
+                    {% if ".jpg" in f or ".png" in f or ".jpeg" in f or ".webp" in f %}
+                        <img src="{{ block.content_file.url }}" class="img-fluid rounded shadow-sm">
+                    {% elif ".mp4" in f or ".webm" in f %}
+                        <div class="ratio ratio-16x9 rounded shadow-sm">
+                            <video controls class="rounded">
+                                <source src="{{ block.content_file.url }}" type="video/mp4">
+                            </video>
+                        </div>
+                    {% elif ".mp3" in f or ".wav" in f or ".m4a" in f %}
+                        <audio controls class="w-100">
+                            <source src="{{ block.content_file.url }}" type="audio/mpeg">
+                        </audio>
+                    {% else %}
+                        <a href="{{ block.content_file.url }}" class="btn btn-outline-primary" download>
+                            <i class="bi bi-download me-2"></i>Скачать материал
+                        </a>
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+        {% elif block.block_type == 'quiz' and block.content_quiz %}
+            {% with quiz=block.content_quiz %}
+            <div class="text-center py-3 bg-light rounded-3 border">
+                {% if quiz.id in passed_quiz_ids %}
+                    <p class="text-success fw-bold mb-0">
+                        <i class="bi bi-check-circle-fill me-2"></i>Тест «{{ quiz.title }}» пройден
+                    </p>
+                {% else %}
+                    {% if quiz.max_attempts > 0 %}
+                    {% with att=attempts_by_quiz|lookup:quiz.id %}
+                    {% if att %}
+                    <div class="mb-2">
+                        {% if att.blocked %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
+                            <i class="bi bi-lock me-1"></i>Попытки исчерпаны ({{ att.used }}/{{ att.max }})
+                        </span>
+                        {% else %}
+                        <span class="badge bg-light text-muted border px-3 py-2">
+                            <i class="bi bi-arrow-repeat me-1"></i>Осталось попыток: {{ att.left }} из {{ att.max }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if not att.blocked %}
+                    <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
+                        Пройти тест: {{ quiz.title }}
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                    {% endwith %}
+                    {% else %}
+                    <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
+                        Пройти тест: {{ quiz.title }}
+                    </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endwith %}
+
+        {% elif block.block_type == 'assignment' %}
+            {% with assignment=block.assignment %}
+            <div>
+                {% if assignment.description %}
+                <div class="text-secondary mb-3" style="line-height:1.7;">
+                    {{ assignment.description|linebreaks }}
+                </div>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                        <i class="bi bi-star me-1"></i>до {{ assignment.max_score }} баллов
+                    </span>
+                    {% if assignment.deadline %}
+                    <span class="badge bg-light text-muted border px-3 py-2">
+                        <i class="bi bi-clock me-1"></i>{{ assignment.deadline|date:"d.m.Y H:i" }}
+                    </span>
+                    {% endif %}
+                </div>
+                {% with sub=submissions_by_assignment|lookup:assignment.id %}
+                {% if sub %}
+                    {% if sub.status == 'graded' %}
+                    <div class="alert alert-success border-0 d-flex align-items-center gap-3 mb-2">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                        <div>
+                            <strong>Проверено</strong> · Оценка:
+                            <strong class="fs-5">{{ sub.score }}</strong> / {{ assignment.max_score }}
+                            {% if sub.feedback %}
+                            <div class="text-muted small mt-1">{{ sub.feedback }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info border-0 d-flex align-items-center gap-3 mb-2">
+                        <i class="bi bi-hourglass-split fs-4"></i>
+                        <div>
+                            <strong>На проверке</strong>
+                            <div class="text-muted small">{{ sub.submitted_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <a href="{% url 'submit_assignment' assignment.id %}"
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Обновить ответ
+                    </a>
+                {% else %}
+                    <a href="{% url 'submit_assignment' assignment.id %}"
+                       class="btn btn-primary px-4 fw-semibold">
+                        <i class="bi bi-send me-2"></i>Сдать задание
+                    </a>
+                {% endif %}
+                {% endwith %}
+            </div>
+            {% endwith %}
+        {% endif %}
+    </div>
+</div>

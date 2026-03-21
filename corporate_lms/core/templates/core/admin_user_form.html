@@ -1,0 +1,324 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="row justify-content-center py-4">
+    <div class="col-lg-7">
+
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'admin_panel' %}" class="text-decoration-none">Управление</a></li>
+                <li class="breadcrumb-item active">
+                    {% if action == 'edit' %}Редактировать пользователя{% else %}Новый пользователь{% endif %}
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Карточка: показываем, если пользователь только что создан -->
+        {% if created_user %}
+        <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4 p-4">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" 
+                     style="width:48px;height:48px;">
+                    <i class="bi bi-person-check-fill text-white fs-5"></i>
+                </div>
+                <div>
+                    <h5 class="mb-1 fw-bold">Пользователь создан!</h5>
+                    <p class="mb-0 text-muted">
+                        Логин: <strong>{{ created_user.username }}</strong>
+                    </p>
+                </div>
+            </div>
+            {% if generated_password %}
+            <div class="mt-3 p-3 bg-white rounded-2 border border-success-subtle d-flex align-items-center justify-content-between">
+                <div>
+                    <small class="text-muted d-block mb-1">Сгенерированный пароль (сохраните — он больше не отобразится)</small>
+                    <code class="fs-5 text-dark fw-bold" id="finalPassword">{{ generated_password }}</code>
+                </div>
+                <button class="btn btn-sm btn-outline-success ms-3" onclick="copyPassword('finalPassword', this)">
+                    <i class="bi bi-clipboard"></i> Копировать
+                </button>
+            </div>
+            {% endif %}
+            <div class="mt-3">
+                <a href="{% url 'admin_panel' %}" class="btn btn-success me-2">← К списку</a>
+                <a href="{% url 'admin_create_user' %}" class="btn btn-outline-success">Создать ещё</a>
+            </div>
+        </div>
+
+        {% else %}
+
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4 p-md-5">
+                <h2 class="fw-bold mb-1">
+                    {% if action == 'edit' %}
+                        Редактирование: <span class="text-primary">{{ target_user.username }}</span>
+                    {% else %}
+                        Новый пользователь
+                    {% endif %}
+                </h2>
+                <p class="text-muted mb-4">
+                    {% if action == 'edit' %}Измените данные пользователя{% else %}Заполните данные для нового аккаунта{% endif %}
+                </p>
+
+                <form method="post" id="userForm">
+                    {% csrf_token %}
+
+                    <!-- Основные данные -->
+                    <div class="form-section mb-4">
+                        <h6 class="section-title">Основные данные</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Логин *</label>
+                                {{ form.username }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Email</label>
+                                {{ form.email }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Имя</label>
+                                {{ form.first_name }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Фамилия</label>
+                                {{ form.last_name }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Пароль -->
+                    <div class="form-section mb-4">
+                        <h6 class="section-title">
+                            {% if action == 'edit' %}Смена пароля{% else %}Пароль{% endif %}
+                        </h6>
+                        {% if action == 'edit' %}
+                        <p class="text-muted small mb-2">Оставьте поле пустым, чтобы не менять пароль</p>
+                        {% endif %}
+                        <div class="input-group">
+                            <input type="text"
+                                   name="{% if action == 'edit' %}new_password{% else %}raw_password{% endif %}"
+                                   id="id_raw_password"
+                                   class="form-control font-monospace"
+                                   placeholder="{% if action == 'edit' %}Новый пароль{% else %}Придумайте или сгенерируйте{% endif %}"
+                                   value="{{ generated_password|default:'' }}"
+                                   autocomplete="off">
+                            <button type="button" class="btn btn-outline-secondary" id="togglePassVis" title="Показать/скрыть">
+                                <i class="bi bi-eye" id="eyeIcon"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="genPassBtn">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Сгенерировать
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="copyPassBtn" title="Копировать">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <div id="passwordStrength" class="mt-2" style="display:none;">
+                            <div class="progress" style="height:4px;">
+                                <div class="progress-bar" id="strengthBar" style="width:0%;"></div>
+                            </div>
+                            <small id="strengthLabel" class="text-muted"></small>
+                        </div>
+                        {% if generated_password %}
+                        <div class="alert alert-warning mt-2 py-2 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Скопируйте пароль — после сохранения он не отобразится
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Роль и права -->
+                    <div class="form-section mb-4">
+                        <h6 class="section-title">Роль и права</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-muted">Роль</label>
+                                {{ form.role }}
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <div class="form-check mb-2">
+                                    {{ form.is_staff }}
+                                    <label class="form-check-label" for="{{ form.is_staff.id_for_label }}">
+                                        <strong>Администратор</strong>
+                                        <small class="d-block text-muted">Доступ к этой панели управления</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Группы -->
+                    <div class="form-section mb-4">
+                        <h6 class="section-title">Группы</h6>
+                        <div class="groups-checkbox-grid">
+                            {% for choice in form.groups %}
+                            <label class="group-checkbox-label">
+                                {{ choice.tag }}
+                                <span>{{ choice.choice_label }}</span>
+                            </label>
+                            {% empty %}
+                            <p class="text-muted small">Групп пока нет. <a href="{% url 'admin_panel' %}">Создайте группу</a> сначала.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        {% for field, errors in form.errors.items %}
+                            {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2 pt-2">
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                            {% if action == 'edit' %}Сохранить изменения{% else %}Создать пользователя{% endif %}
+                        </button>
+                        <a href="{% url 'admin_panel' %}" class="btn btn-light border">Отмена</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<style>
+.form-section { }
+.section-title {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.groups-checkbox-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+.group-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: .4rem .85rem;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: .875rem;
+    font-weight: 500;
+    user-select: none;
+}
+.group-checkbox-label:has(input:checked) {
+    background: #e7f1ff;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+.group-checkbox-label input { accent-color: #0d6efd; }
+
+/* Цвета прогресс-бара */
+.strength-weak { background-color: #dc3545 !important; }
+.strength-ok   { background-color: #ffc107 !important; }
+.strength-good { background-color: #198754 !important; }
+</style>
+
+<script>
+// --- Генерация пароля через API ---
+const passField = document.getElementById('id_raw_password');
+const genBtn    = document.getElementById('genPassBtn');
+const copyBtn   = document.getElementById('copyPassBtn');
+const toggleBtn = document.getElementById('togglePassVis');
+const eyeIcon   = document.getElementById('eyeIcon');
+const strengthWrap = document.getElementById('passwordStrength');
+const strengthBar  = document.getElementById('strengthBar');
+const strengthLabel = document.getElementById('strengthLabel');
+
+genBtn.addEventListener('click', async () => {
+    genBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try {
+        const res = await fetch('{% url "admin_gen_password" %}');
+        const data = await res.json();
+        passField.value = data.password;
+        passField.type = 'text'; // показываем сгенерированный
+        eyeIcon.className = 'bi bi-eye-slash';
+        checkStrength(data.password);
+    } catch(e) {
+        // fallback локальная генерация
+        passField.value = generateLocal();
+        checkStrength(passField.value);
+    }
+    genBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Сгенерировать';
+});
+
+copyBtn.addEventListener('click', () => {
+    if (!passField.value) return;
+    navigator.clipboard.writeText(passField.value);
+    copyBtn.innerHTML = '<i class="bi bi-check2"></i>';
+    setTimeout(() => copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>', 1500);
+});
+
+toggleBtn.addEventListener('click', () => {
+    if (passField.type === 'password') {
+        passField.type = 'text';
+        eyeIcon.className = 'bi bi-eye-slash';
+    } else {
+        passField.type = 'password';
+        eyeIcon.className = 'bi bi-eye';
+    }
+});
+
+passField.addEventListener('input', () => checkStrength(passField.value));
+
+function checkStrength(pw) {
+    if (!pw) { strengthWrap.style.display = 'none'; return; }
+    strengthWrap.style.display = 'block';
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^a-zA-Z0-9]/.test(pw)) score++;
+    
+    const pct = (score / 5) * 100;
+    strengthBar.style.width = pct + '%';
+    strengthBar.className = 'progress-bar';
+    if (score <= 2) {
+        strengthBar.classList.add('strength-weak');
+        strengthLabel.textContent = 'Слабый пароль';
+        strengthLabel.className = 'text-danger small';
+    } else if (score <= 3) {
+        strengthBar.classList.add('strength-ok');
+        strengthLabel.textContent = 'Средний пароль';
+        strengthLabel.className = 'text-warning small';
+    } else {
+        strengthBar.classList.add('strength-good');
+        strengthLabel.textContent = 'Надёжный пароль';
+        strengthLabel.className = 'text-success small';
+    }
+}
+
+function generateLocal() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    return Array.from({length: 12}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function copyPassword(id, btn) {
+    const el = document.getElementById(id);
+    if (el) {
+        navigator.clipboard.writeText(el.textContent);
+        btn.innerHTML = '<i class="bi bi-check2"></i> Скопировано!';
+    }
+}
+
+// Если пароль уже есть (после генерации) — показываем индикатор
+{% if generated_password %}
+checkStrength('{{ generated_password }}');
+{% endif %}
+</script>
+{% endblock %}

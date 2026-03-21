@@ -1,0 +1,49 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'course_builder' course.id %}" class="text-decoration-none">
+                        Конструктор
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">Настройка задания</li>
+            </ol>
+        </nav>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h3 class="fw-bold mb-1">{{ block.title }}</h3>
+                <p class="text-muted mb-4">Настройте параметры задания для студентов</p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">ОПИСАНИЕ ЗАДАНИЯ</label>
+                        {{ form.description }}
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">МАКСИМАЛЬНЫЙ БАЛЛ</label>
+                            {{ form.max_score }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-muted">СРОК СДАЧИ</label>
+                            {{ form.deadline }}
+                            <div class="form-text">Необязательно</div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary px-4">Сохранить</button>
+                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

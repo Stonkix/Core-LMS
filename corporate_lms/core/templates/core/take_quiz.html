@@ -2,42 +2,136 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
+
         <div class="text-center mb-5">
             <h2 class="fw-bold">{{ quiz.title }}</h2>
-            <p class="text-muted small">Выберите один верный вариант в каждом вопросе</p>
+            {% if quiz.max_attempts > 0 %}
+            <div class="d-inline-flex align-items-center gap-2 mt-2 px-3 py-1 rounded-pill
+                        {% if blocked %}bg-danger-subtle text-danger{% else %}bg-light text-muted{% endif %}">
+                <i class="bi bi-arrow-repeat"></i>
+                {% if blocked %}
+                    Попытки исчерпаны
+                {% else %}
+                    Осталось попыток: <strong>{{ attempts_left }}</strong> из {{ quiz.max_attempts }}
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
+
+        {% if blocked %}
+        <div class="card border-0 shadow-sm text-center p-5">
+            <div class="mb-4">
+                <div class="d-inline-flex align-items-center justify-content-center bg-danger-subtle rounded-circle"
+                     style="width:80px;height:80px;">
+                    <i class="bi bi-lock-fill text-danger fs-2"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold mb-2">Попытки исчерпаны</h4>
+            <p class="text-muted mb-1">
+                Вы использовали все {{ quiz.max_attempts }}
+                {% if quiz.max_attempts == 1 %}попытку
+                {% elif quiz.max_attempts < 5 %}попытки
+                {% else %}попыток{% endif %}.
+            </p>
+            {% if best_result %}
+            <p class="text-muted mb-4">
+                Лучший результат:
+                <strong class="text-primary fs-5">{{ best_result.score }}</strong>
+                из {{ best_result.max_score }}
+            </p>
+            {% endif %}
+            <a href="javascript:history.back()" class="btn btn-primary px-4">← Вернуться к курсу</a>
+        </div>
+
+        {% else %}
+
+        {% if best_result %}
+        <div class="alert alert-light border d-flex align-items-center gap-3 mb-4">
+            <i class="bi bi-clock-history text-muted fs-5"></i>
+            <div>
+                Предыдущий результат:
+                <strong>{{ best_result.score }}/{{ best_result.max_score }}</strong>
+                <span class="text-muted small ms-2">{{ best_result.completed_at|date:"d.m.Y H:i" }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <p class="text-muted text-center small mb-4">
+            Для вопросов с одним ответом — выберите один вариант.<br>
+            Для вопросов с несколькими ответами — отметьте все верные.
+        </p>
 
         <form method="post">
             {% csrf_token %}
             {% for question in questions %}
             <div class="card mb-4 border-0 shadow-sm">
                 <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4"> {{ forloop.counter }}. {{ question.text }}</h5>
+                    <div class="d-flex align-items-start gap-2 mb-4">
+                        <h5 class="fw-bold mb-0">{{ forloop.counter }}. {{ question.text }}</h5>
+                        {% if question.is_multiple %}
+                        <span class="badge bg-info-subtle text-info border border-info-subtle flex-shrink-0 mt-1">
+                            несколько ответов
+                        </span>
+                        {% endif %}
+                    </div>
+
                     <div class="d-flex flex-column gap-2">
                         {% for choice in question.shuffled_choices %}
-                        <div>
-                            <input type="radio" class="btn-check" name="question_{{ question.id }}" id="c_{{ choice.id }}" value="{{ choice.id }}" required>
-                            <label class="btn btn-outline-light w-100 text-start p-3 border text-dark q-opt" for="c_{{ choice.id }}">
-                                {{ choice.text }}
+                            {% if question.is_multiple %}
+                            <label class="choice-label choice-checkbox d-flex align-items-center gap-3 p-3 border rounded-3"
+                                   for="c_{{ choice.id }}">
+                                <input type="checkbox"
+                                       name="question_{{ question.id }}"
+                                       id="c_{{ choice.id }}"
+                                       value="{{ choice.id }}"
+                                       class="choice-input-check"
+                                       style="width:18px;height:18px;flex-shrink:0;accent-color:#0d6efd;cursor:pointer;">
+                                <span>{{ choice.text }}</span>
                             </label>
-                        </div>
+                            {% else %}
+                            <label class="choice-label choice-radio d-flex align-items-center gap-3 p-3 border rounded-3"
+                                   for="c_{{ choice.id }}">
+                                <input type="radio"
+                                       name="question_{{ question.id }}"
+                                       id="c_{{ choice.id }}"
+                                       value="{{ choice.id }}"
+                                       class="choice-input-radio"
+                                       style="width:18px;height:18px;flex-shrink:0;accent-color:#0d6efd;cursor:pointer;"
+                                       required>
+                                <span>{{ choice.text }}</span>
+                            </label>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 </div>
             </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary btn-lg w-100 mt-3 shadow">Завершить и сдать тест</button>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 mt-3 shadow">
+                Завершить и сдать тест
+            </button>
         </form>
+        {% endif %}
+
     </div>
 </div>
 
 <style>
-    .btn-check:checked + .q-opt { 
-        background-color: #e7f1ff !important; 
-        border-color: #0d6efd !important; 
-        color: #0d6efd !important; 
-        font-weight: 600;
-    }
-    .q-opt:hover { background-color: #f8f9fa; }
+.choice-label {
+    cursor: pointer;
+    background: #fff;
+    transition: all .15s ease;
+    user-select: none;
+}
+.choice-label:hover {
+    background: #f8fafc;
+    border-color: #0d6efd !important;
+}
+.choice-label:has(input:checked) {
+    background: #e7f1ff !important;
+    border-color: #0d6efd !important;
+    color: #0d6efd;
+    font-weight: 600;
+}
 </style>
 {% endblock %}

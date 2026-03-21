@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height:60vh;">
+    <div class="col-md-6 text-center">
+        <div class="card border-0 shadow-sm p-5">
+            {% if not_yet %}
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center
+                                bg-info-subtle rounded-circle" style="width:80px;height:80px;">
+                        <i class="bi bi-clock text-info fs-2"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-2">Тест ещё не открыт</h3>
+                <p class="text-muted mb-1">«{{ quiz.title }}» будет доступен с</p>
+                <p class="fs-5 fw-bold text-info mb-4">
+                    {{ quiz.available_from|date:"d.m.Y H:i" }}
+                </p>
+            {% else %}
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center
+                                bg-danger-subtle rounded-circle" style="width:80px;height:80px;">
+                        <i class="bi bi-calendar-x text-danger fs-2"></i>
+                    </div>
+                </div>
+                <h3 class="fw-bold mb-2">Тест закрыт</h3>
+                <p class="text-muted mb-1">«{{ quiz.title }}» принимал ответы до</p>
+                <p class="fs-5 fw-bold text-danger mb-4">
+                    {{ quiz.available_until|date:"d.m.Y H:i" }}
+                </p>
+            {% endif %}
+            <a href="javascript:history.back()" class="btn btn-primary px-4">← Назад</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
