@@ -843,7 +843,21 @@ def course_detail(request, course_id):
     # Общий прогресс курса
     total_quizzes = len(quizzes_to_pass)
     passed_count = len(passed_quiz_ids)
-    all_quizzes_passed = total_quizzes <= passed_count
+    quizzes_ok = total_quizzes <= passed_count
+
+    # Проверка заданий
+    assignment_blocks = list(all_blocks.filter(block_type='assignment'))
+    total_assignments = len(assignment_blocks)
+    graded_assignments = sum(
+        1 for b in assignment_blocks
+        if submissions_by_assignment.get(
+            getattr(b, 'assignment', None) and b.assignment.id
+        ) and submissions_by_assignment.get(b.assignment.id)
+        and submissions_by_assignment[b.assignment.id].status == 'graded'
+    )
+    assignments_ok = graded_assignments >= total_assignments
+
+    all_quizzes_passed = quizzes_ok and assignments_ok
 
     # Процент выполнения курса (квизы + задания)
     assignment_blocks = list(all_blocks.filter(block_type='assignment'))
@@ -880,13 +894,29 @@ def course_detail(request, course_id):
 def complete_course(request, course_id):
     if request.method == 'POST':
         course = get_object_or_404(Course, id=course_id)
-        quiz_ids = course.blocks.filter(
-            block_type='quiz').values_list('content_quiz_id', flat=True)
-        passed_count = StudentResult.objects.filter(
+
+        # Проверка тестов
+        quiz_ids = list(course.blocks.filter(
+            block_type='quiz').values_list('content_quiz_id', flat=True))
+        passed_quizzes = StudentResult.objects.filter(
             student=request.user, quiz_id__in=quiz_ids
         ).values('quiz').distinct().count()
-        if passed_count >= len(quiz_ids):
+        all_quizzes_ok = passed_quizzes >= len(quiz_ids)
+
+        # Проверка заданий — все должны быть проверены (graded)
+        assignment_ids = list(Assignment.objects.filter(
+            block__course=course
+        ).values_list('id', flat=True))
+        graded_assignments = Submission.objects.filter(
+            student=request.user,
+            assignment_id__in=assignment_ids,
+            status='graded'
+        ).values('assignment').distinct().count()
+        all_assignments_ok = graded_assignments >= len(assignment_ids)
+
+        if all_quizzes_ok and all_assignments_ok:
             CourseCompletion.objects.get_or_create(student=request.user, course=course)
+
     return redirect('course_detail', course_id=course_id)
 
 

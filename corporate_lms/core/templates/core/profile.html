@@ -5,154 +5,271 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4 p-md-5">
 
-                <div class="d-flex align-items-center mb-5 border-bottom pb-4">
+                <!-- Шапка профиля -->
+                <div class="d-flex align-items-center mb-4 border-bottom pb-4">
                     <div class="flex-shrink-0 position-relative">
                         {% if user.avatar %}
                             <img src="{{ user.avatar.url }}" id="avatarPreview"
-                                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;aspect-ratio:1/1;"
+                                 style="width:80px;height:80px;border-radius:50%;object-fit:cover;"
                                  class="border shadow-sm">
                         {% else %}
                             <div id="avatarPlaceholder"
                                  class="bg-light d-flex align-items-center justify-content-center border"
-                                 style="width:100px;height:100px;border-radius:50%;">
-                                <i class="bi bi-person text-muted fs-1"></i>
+                                 style="width:80px;height:80px;border-radius:50%;">
+                                <i class="bi bi-person text-muted fs-2"></i>
                             </div>
                             <img id="avatarPreview"
-                                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;aspect-ratio:1/1;display:none;"
+                                 style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:none;"
                                  class="border shadow-sm">
                         {% endif %}
                     </div>
                     <div class="ms-4">
-                        <h2 class="fw-bold mb-1">{{ user.get_full_name|default:user.username }}</h2>
+                        <h3 class="fw-bold mb-1">{{ user.get_full_name|default:user.username }}</h3>
                         <span class="badge {% if user.role == 'teacher' %}bg-primary{% else %}bg-secondary{% endif %}">
                             {{ user.get_role_display }}
                         </span>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-7 border-end pe-md-5">
-                        <h5 class="fw-bold mb-4">Личные данные</h5>
+                <!-- Вкладки -->
+                <ul class="nav nav-tabs border-0 mb-4" id="profileTabs">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold border-0 bg-transparent px-4 pb-3"
+                                data-bs-toggle="tab" data-bs-target="#tab-profile" type="button">
+                            <i class="bi bi-person-gear me-1"></i>Мои данные
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold border-0 bg-transparent px-4 pb-3"
+                                data-bs-toggle="tab" data-bs-target="#tab-grades" type="button">
+                            <i class="bi bi-bar-chart me-1"></i>Мои оценки
+                            {% if results %}
+                            <span class="badge bg-primary ms-1">{{ results|length }}</span>
+                            {% endif %}
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold border-0 bg-transparent px-4 pb-3"
+                                data-bs-toggle="tab" data-bs-target="#tab-courses" type="button">
+                            <i class="bi bi-patch-check me-1"></i>Пройденные курсы
+                            {% if completions %}
+                            <span class="badge bg-success ms-1">{{ completions|length }}</span>
+                            {% endif %}
+                        </button>
+                    </li>
+                </ul>
 
-                        {% if form.errors %}
-                        <div class="alert alert-danger small d-flex gap-2 align-items-start">
-                            <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
-                            <div>
-                            {% for field, errors in form.errors.items %}
-                                {% for err in errors %}<div>{{ err }}</div>{% endfor %}
-                            {% endfor %}
+                <div class="tab-content">
+
+                    <!-- Вкладка: Мои данные -->
+                    <div class="tab-pane fade show active" id="tab-profile">
+                        <div class="row g-5">
+
+                            <!-- Личные данные -->
+                            <div class="col-md-6">
+                                <h5 class="fw-bold mb-4">Личные данные</h5>
+
+                                {% if form.errors %}
+                                <div class="alert alert-danger small d-flex gap-2 align-items-start">
+                                    <i class="bi bi-exclamation-triangle-fill mt-1 flex-shrink-0"></i>
+                                    <div>
+                                    {% for field, errors in form.errors.items %}
+                                        {% for err in errors %}<div>{{ err }}</div>{% endfor %}
+                                    {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <form method="post" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="update_profile">
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <label class="form-label small fw-bold text-muted">Имя</label>
+                                            {{ form.first_name }}
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small fw-bold text-muted">Фамилия</label>
+                                            {{ form.last_name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Email</label>
+                                            {{ form.email }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-bold text-muted">Телефон</label>
+                                            {{ form.phone }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label small fw-bold text-muted">Аватарка</label>
+                                            {{ form.avatar }}
+                                            <div id="avatarInfo" class="mt-2" style="display:none;">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="progress flex-grow-1" style="height:4px;">
+                                                        <div id="avatarSizeBar" class="progress-bar" style="width:0%;"></div>
+                                                    </div>
+                                                    <small id="avatarSizeText" class="text-muted text-nowrap"></small>
+                                                </div>
+                                                <small id="avatarSizeWarn" class="text-danger" style="display:none;">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    Аватарка не должна превышать 10 МБ
+                                                </small>
+                                            </div>
+                                            <div class="form-text text-muted">
+                                                <i class="bi bi-info-circle me-1"></i>Максимум <strong>10 МБ</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary mt-4 px-4" id="saveProfileBtn">
+                                        Сохранить
+                                    </button>
+                                </form>
                             </div>
+
+                            <!-- Смена пароля -->
+                            <div class="col-md-6">
+                                <h5 class="fw-bold mb-4">Смена пароля</h5>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="change_password">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Старый пароль</label>
+                                        <input type="password" name="old_password" class="form-control"
+                                               id="id_old_password" autocomplete="current-password">
+                                        {% if pw_form.old_password.errors %}
+                                        <div class="text-danger small mt-1">{{ pw_form.old_password.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Новый пароль</label>
+                                        <input type="password" name="new_password1" class="form-control"
+                                               id="id_new_password1" autocomplete="new-password">
+                                        {% if pw_form.new_password1.errors %}
+                                        <div class="text-danger small mt-1">{{ pw_form.new_password1.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Подтверждение нового пароля</label>
+                                        <input type="password" name="new_password2" class="form-control"
+                                               id="id_new_password2" autocomplete="new-password">
+                                        {% if pw_form.new_password2.errors %}
+                                        <div class="text-danger small mt-1">{{ pw_form.new_password2.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-secondary px-4">
+                                        Сменить пароль
+                                    </button>
+                                </form>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Вкладка: Мои оценки -->
+                    <div class="tab-pane fade" id="tab-grades">
+                        {% if results %}
+                        <div class="card border-0 shadow-sm">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr class="small text-uppercase text-muted">
+                                            <th class="ps-4">Тест</th>
+                                            <th>Курс</th>
+                                            <th class="text-center">Результат</th>
+                                            <th class="text-center">Процент</th>
+                                            <th class="pe-4 text-end">Дата</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for res in results %}
+                                        <tr>
+                                            <td class="ps-4 fw-semibold">{{ res.quiz.title }}</td>
+                                            <td class="text-muted small">{{ res.quiz.course.title }}</td>
+                                            <td class="text-center">
+                                                <span class="fw-bold
+                                                    {% if res.max_score > 0 and res.score|floatformat:0 >= res.max_score|floatformat:0 %}text-success
+                                                    {% elif res.max_score > 0 %}text-primary
+                                                    {% else %}text-muted{% endif %}">
+                                                    {{ res.score }}
+                                                </span>
+                                                <span class="text-muted">/{{ res.max_score }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% if res.max_score > 0 %}
+                                                {% with pct=res.score|floatformat:0 %}
+                                                <div class="d-flex align-items-center gap-2 justify-content-center">
+                                                    <div class="progress" style="width:60px;height:5px;border-radius:3px;">
+                                                        <div class="progress-bar
+                                                            {% if res.score == res.max_score %}bg-success
+                                                            {% else %}bg-primary{% endif %}"
+                                                             style="width:{% widthratio res.score res.max_score 100 %}%;"></div>
+                                                    </div>
+                                                    <small class="text-muted">{% widthratio res.score res.max_score 100 %}%</small>
+                                                </div>
+                                                {% endwith %}
+                                                {% endif %}
+                                            </td>
+                                            <td class="pe-4 text-end text-muted small">
+                                                {{ res.completed_at|date:"d.m.Y H:i" }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5 border rounded-4 bg-light">
+                            <i class="bi bi-bar-chart display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-3">Вы ещё не проходили тесты.</p>
                         </div>
                         {% endif %}
-
-                        <form method="post" enctype="multipart/form-data">
-                            {% csrf_token %}
-                            <input type="hidden" name="update_profile">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-muted">Имя</label>
-                                    {{ form.first_name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-muted">Фамилия</label>
-                                    {{ form.last_name }}
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-muted">Email</label>
-                                    {{ form.email }}
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-muted">Телефон</label>
-                                    {{ form.phone }}
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small fw-bold text-muted">Аватарка</label>
-                                    {{ form.avatar }}
-                                    <div id="avatarInfo" class="mt-2" style="display:none;">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="progress flex-grow-1" style="height:4px;">
-                                                <div id="avatarSizeBar" class="progress-bar" style="width:0%;"></div>
-                                            </div>
-                                            <small id="avatarSizeText" class="text-muted text-nowrap"></small>
-                                        </div>
-                                        <small id="avatarSizeWarn" class="text-danger" style="display:none;">
-                                            <i class="bi bi-exclamation-triangle me-1"></i>
-                                            Аватарка не должна превышать 10 МБ
-                                        </small>
-                                    </div>
-                                    <div class="form-text text-muted">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        Максимум <strong>10 МБ</strong>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary mt-4 px-4" id="saveProfileBtn">
-                                Обновить профиль
-                            </button>
-                        </form>
                     </div>
 
-                    <div class="col-md-5 ps-md-5 mt-5 mt-md-0">
-                        <h5 class="fw-bold mb-4">Мои результаты</h5>
-                        <div class="list-group list-group-flush">
-                            {% for res in results %}
-                            <div class="list-group-item px-0 py-3 bg-transparent border-bottom">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <div class="fw-bold">{{ res.quiz.title }}</div>
-                                        <small class="text-muted">{{ res.completed_at|date:"d.m.Y" }}</small>
+                    <!-- Вкладка: Пройденные курсы -->
+                    <div class="tab-pane fade" id="tab-courses">
+                        {% if completions %}
+                        <div class="row g-4">
+                            {% for c in completions %}
+                            <div class="col-12 col-md-6 col-lg-4">
+                                <div class="card border-0 shadow-sm h-100" style="border-top:3px solid #198754 !important;">
+                                    <div class="card-body p-4 d-flex flex-column">
+                                        <div class="text-success small fw-bold mb-2">
+                                            <i class="bi bi-patch-check-fill me-1"></i>Завершён {{ c.completed_at|date:"d.m.Y" }}
+                                        </div>
+                                        <h5 class="fw-bold mb-3 flex-grow-1">{{ c.course.title }}</h5>
+                                        <a href="{% url 'course_detail' c.course.id %}"
+                                           class="btn btn-outline-success rounded-pill w-100">
+                                            <i class="bi bi-eye me-1"></i>Просмотреть
+                                        </a>
                                     </div>
-                                    <div class="fs-4 fw-bold text-primary">{{ res.score }}</div>
                                 </div>
                             </div>
-                            {% empty %}
-                            <p class="text-muted">Вы еще не проходили тесты.</p>
                             {% endfor %}
                         </div>
-
-                        <hr class="my-4">
-                        <h5 class="fw-bold mb-3">Смена пароля</h5>
-                        <form method="post">
-                            {% csrf_token %}
-                            <input type="hidden" name="change_password">
-                            <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Старый пароль</label>
-                                    <input type="password" name="old_password" class="form-control"
-                                           id="id_old_password" autocomplete="current-password">
-                                    {% if pw_form.old_password.errors %}
-                                    <div class="text-danger small mt-1">{{ pw_form.old_password.errors }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Новый пароль</label>
-                                    <input type="password" name="new_password1" class="form-control"
-                                           id="id_new_password1" autocomplete="new-password">
-                                    {% if pw_form.new_password1.errors %}
-                                    <div class="text-danger small mt-1">{{ pw_form.new_password1.errors }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">Подтверждение нового пароля</label>
-                                    <input type="password" name="new_password2" class="form-control"
-                                           id="id_new_password2" autocomplete="new-password">
-                                    {% if pw_form.new_password2.errors %}
-                                    <div class="text-danger small mt-1">{{ pw_form.new_password2.errors }}</div>
-                                    {% endif %}
-                                </div>
-                            <button type="submit" class="btn btn-outline-secondary px-4 mt-3">Сменить пароль</button>
-                        </form>
+                        {% else %}
+                        <div class="text-center py-5 border rounded-4 bg-light">
+                            <i class="bi bi-trophy display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-3">Вы ещё не завершили ни одного курса.</p>
+                        </div>
+                        {% endif %}
                     </div>
-                </div>
 
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<style>
+.nav-tabs .nav-link { color: #6c757d; border-bottom: 3px solid transparent !important; transition: color .15s; }
+.nav-tabs .nav-link.active { color: #0d6efd !important; border-bottom: 3px solid #0d6efd !important; }
+.nav-tabs .nav-link:hover { color: #0d6efd; }
+</style>
+
 <script>
 const MAX_AVATAR_MB = 10;
 const MAX_AVATAR_BYTES = MAX_AVATAR_MB * 1024 * 1024;
-
 const avatarInput = document.querySelector('input[accept="image/*"]');
 const avatarPreview = document.getElementById('avatarPreview');
 const avatarPlaceholder = document.getElementById('avatarPlaceholder');
@@ -164,10 +281,8 @@ if (avatarInput) {
         const warn = document.getElementById('avatarSizeWarn');
         const bar  = document.getElementById('avatarSizeBar');
         const btn  = document.getElementById('saveProfileBtn');
+        if (!file) { info.style.display='none'; return; }
 
-        if (!file) { info.style.display = 'none'; return; }
-
-        // Превью
         const reader = new FileReader();
         reader.onload = e => {
             avatarPreview.src = e.target.result;
@@ -176,19 +291,15 @@ if (avatarInput) {
         };
         reader.readAsDataURL(file);
 
-        // Размер
         const sizeMB = file.size / 1024 / 1024;
         const pct    = Math.min((file.size / MAX_AVATAR_BYTES) * 100, 100);
         const isOver = file.size > MAX_AVATAR_BYTES;
-
-        document.getElementById('avatarSizeText').textContent =
-            sizeMB.toFixed(1) + ' МБ / ' + MAX_AVATAR_MB + ' МБ';
+        document.getElementById('avatarSizeText').textContent = sizeMB.toFixed(1) + ' МБ / ' + MAX_AVATAR_MB + ' МБ';
         bar.style.width = pct + '%';
         bar.className   = 'progress-bar ' + (isOver ? 'bg-danger' : pct > 80 ? 'bg-warning' : 'bg-success');
-
         info.style.display = 'block';
         warn.style.display = isOver ? 'block' : 'none';
-        btn.disabled       = isOver;
+        btn.disabled = isOver;
     });
 }
 </script>
