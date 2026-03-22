@@ -16,7 +16,8 @@ from .models import (Course, ContentBlock, Quiz, Question, Choice,
                      StudentResult, CourseCompletion, CustomUser,
                      Assignment, Submission, Section, CourseEnrollment)
 from .forms import (CourseForm, ContentBlockForm, QuizForm, UserProfileForm,
-                    AssignmentForm, SubmissionForm, GradeSubmissionForm, SectionForm)
+                    AssignmentForm, SubmissionForm, GradeSubmissionForm, SectionForm,
+                    EnrollForm)
 from rest_framework import generics
 from .serializers import CourseSerializer
 
