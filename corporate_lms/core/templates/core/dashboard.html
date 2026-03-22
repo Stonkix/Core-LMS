@@ -62,9 +62,14 @@
                                 <a href="{% url 'course_builder' course.id %}" class="btn btn-primary w-100 rounded-pill">
                                     <i class="bi bi-tools me-1"></i>Конструктор
                                 </a>
-                                <a href="{% url 'edit_course' course.id %}" class="btn btn-outline-secondary btn-sm w-100 rounded-pill">
-                                    Настройки
-                                </a>
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'edit_course' course.id %}" class="btn btn-outline-secondary btn-sm rounded-pill flex-grow-1">
+                                        Настройки
+                                    </a>
+                                    <a href="{% url 'course_stats' course.id %}" class="btn btn-outline-info btn-sm rounded-pill flex-grow-1">
+                                        <i class="bi bi-bar-chart me-1"></i>Статистика
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -132,6 +137,55 @@
 
     {% else %}
     <!-- Студент -->
+    <div class="d-flex justify-content-end mb-4">
+        <a href="{% url 'enroll_course' %}" class="btn btn-outline-primary rounded-pill px-4">
+            <i class="bi bi-plus-lg me-2"></i>Добавить курс по коду
+        </a>
+    </div>
+
+    <!-- Дедлайны -->
+    {% if urgent_deadlines or future_deadlines %}
+    <div class="deadline-compact mb-4">
+        <div class="deadline-compact-header">
+            <i class="bi bi-calendar-event me-2"></i><strong>Дедлайны</strong>
+        </div>
+        <div class="deadline-compact-body">
+
+            {% for d in urgent_deadlines %}
+            <a href="{{ d.url }}" class="deadline-row {% if d.overdue %}deadline-row-overdue{% endif %}">
+                <span class="deadline-type-label {% if d.type == 'course' %}dl-course{% elif d.type == 'quiz' %}dl-quiz{% else %}dl-task{% endif %}">
+                    {% if d.type == 'course' %}Курс{% elif d.type == 'quiz' %}Тест{% else %}Задание{% endif %}
+                </span>
+                <span class="deadline-row-title">{{ d.title }}</span>
+                <span class="deadline-row-time {% if d.overdue %}text-danger{% else %}text-muted{% endif %}"
+                      {% if not d.overdue %}data-date="{{ d.date|date:'c' }}"{% endif %}>
+                    {% if d.overdue %}просрочено{% endif %}
+                </span>
+            </a>
+            {% endfor %}
+
+            {% if future_deadlines %}
+            <details class="deadline-future">
+                <summary class="deadline-future-toggle">
+                    <i class="bi bi-chevron-right toggle-icon me-1"></i>
+                    Позже — больше недели ({{ future_deadlines|length }})
+                </summary>
+                {% for d in future_deadlines %}
+                <a href="{{ d.url }}" class="deadline-row">
+                    <span class="deadline-type-label {% if d.type == 'course' %}dl-course{% elif d.type == 'quiz' %}dl-quiz{% else %}dl-task{% endif %}">
+                        {% if d.type == 'course' %}Курс{% elif d.type == 'quiz' %}Тест{% else %}Задание{% endif %}
+                    </span>
+                    <span class="deadline-row-title">{{ d.title }}</span>
+                    <span class="deadline-row-time text-muted" data-date="{{ d.date|date:'c' }}"></span>
+                </a>
+                {% endfor %}
+            </details>
+            {% endif %}
+
+        </div>
+    </div>
+    {% endif %}
+
     <ul class="nav nav-tabs border-0 mb-4" id="courseTabs">
         <li class="nav-item">
             <button class="nav-link active fw-bold border-0 bg-transparent px-4 pb-3"
@@ -237,6 +291,79 @@
 .nav-tabs .nav-link.active { color: #0d6efd !important; border-bottom: 3px solid #0d6efd !important; }
 .nav-tabs .nav-link:hover { color: #0d6efd; }
 
+/* Дедлайны компактные */
+.deadline-compact {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.deadline-compact-header {
+    padding: .6rem 1rem;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: .8rem;
+    color: #64748b;
+}
+.deadline-compact-body { }
+.deadline-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .45rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    text-decoration: none;
+    color: #1e293b;
+    font-size: .82rem;
+    transition: background .12s;
+}
+.deadline-row:last-child { border-bottom: none; }
+.deadline-row:hover { background: #f8fafc; }
+.deadline-row-overdue { background: #fff5f5; }
+.deadline-row-overdue:hover { background: #fee2e2; }
+.deadline-type-label {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    min-width: 54px;
+    text-align: center;
+}
+.dl-course { background: #dbeafe; color: #1d4ed8; }
+.dl-quiz   { background: #fef9c3; color: #92400e; }
+.dl-task   { background: #dcfce7; color: #166534; }
+.deadline-row-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.deadline-row-time {
+    flex-shrink: 0;
+    font-size: .78rem;
+    white-space: nowrap;
+}
+
+/* Спойлер будущих дедлайнов */
+.deadline-future { border-top: 1px solid #f1f5f9; }
+.deadline-future-toggle {
+    display: flex;
+    align-items: center;
+    padding: .45rem 1rem;
+    font-size: .78rem;
+    color: #94a3b8;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background .12s;
+}
+.deadline-future-toggle::-webkit-details-marker { display: none; }
+.deadline-future-toggle:hover { background: #f8fafc; color: #64748b; }
+.deadline-future[open] .toggle-icon { transform: rotate(90deg); }
+.toggle-icon { transition: transform .2s; display: inline-block; }
+.deadline-future-body { }
+
 /* Карточки курсов */
 .dash-card {
     background: #fff;
@@ -301,4 +428,29 @@
     margin-top: auto;
 }
 </style>
+<script>
+function formatCountdown(date) {
+    const diff = date - new Date();
+    if (diff <= 0) return null;
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    let parts = [];
+    if (d > 0) parts.push(`${d} дн.`);
+    if (h > 0) parts.push(`${h} ч.`);
+    if (m > 0 || parts.length === 0) parts.push(`${m} мин.`);
+    return 'осталось ' + parts.join(' ');
+}
+
+document.querySelectorAll('.deadline-row-time[data-date]').forEach(el => {
+    const date = new Date(el.dataset.date);
+    function update() {
+        const text = formatCountdown(date);
+        el.textContent = text || 'просрочено';
+        if (!text) el.classList.add('text-danger');
+    }
+    update();
+    setInterval(update, 60000);
+});
+</script>
 {% endblock %}

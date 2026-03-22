@@ -51,6 +51,37 @@
                         </div>
                     </div>
 
+                    <!-- Код доступа -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+                            <i class="bi bi-key me-2"></i>Доступ по коду
+                        </h6>
+                        <div class="form-check form-switch mb-3">
+                            {{ form.allow_self_enroll }}
+                            <label class="form-check-label fw-semibold"
+                                   for="{{ form.allow_self_enroll.id_for_label }}">
+                                Разрешить самостоятельную запись по коду
+                            </label>
+                        </div>
+                        <div id="accessCodeBlock">
+                            <label class="form-label small fw-semibold">Код доступа</label>
+                            <div class="input-group">
+                                {{ form.access_code }}
+                                <button type="button" class="btn btn-outline-secondary"
+                                        id="genCodeBtn" title="Сгенерировать">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        id="copyCodeBtn" title="Копировать">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Поделитесь этим кодом со студентами — они смогут записаться сами.
+                            </div>
+                        </div>
+                    </div>
+
                     {% if form.errors %}
                     <div class="alert alert-danger small">
                         Проверьте правильность заполнения всех полей.
@@ -66,4 +97,43 @@
         </div>
     </div>
 </div>
+<script>
+const codeInput = document.querySelector('input[name="access_code"]');
+const genBtn = document.getElementById('genCodeBtn');
+const copyBtn = document.getElementById('copyCodeBtn');
+const switchEl = document.querySelector('input[name="allow_self_enroll"]');
+const codeBlock = document.getElementById('accessCodeBlock');
+
+function toggleCodeBlock() {
+    codeBlock.style.display = switchEl.checked ? 'block' : 'none';
+}
+if (switchEl) {
+    toggleCodeBlock();
+    switchEl.addEventListener('change', toggleCodeBlock);
+}
+
+function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        if (i === 4) code += '-';
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
+
+if (genBtn) {
+    genBtn.addEventListener('click', () => {
+        codeInput.value = genCode();
+    });
+}
+if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+        if (!codeInput.value) return;
+        navigator.clipboard.writeText(codeInput.value);
+        copyBtn.innerHTML = '<i class="bi bi-check2"></i>';
+        setTimeout(() => copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>', 1500);
+    });
+}
+</script>
 {% endblock %}

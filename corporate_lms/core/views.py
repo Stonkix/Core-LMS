@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from .models import (Course, ContentBlock, Quiz, Question, Choice,
                      StudentResult, CourseCompletion, CustomUser,
-                     Assignment, Submission, Section)
+                     Assignment, Submission, Section, CourseEnrollment)
 from .forms import (CourseForm, ContentBlockForm, QuizForm, UserProfileForm,
                     AssignmentForm, SubmissionForm, GradeSubmissionForm, SectionForm)
 from rest_framework import generics
@@ -55,8 +55,12 @@ def dashboard(request):
             'pending_submissions': pending_submissions,
         })
     else:
-        all_available_courses = Course.objects.filter(
-            groups__in=request.user.groups.all()).distinct()
+        # Курсы через группы + курсы по личной записи
+        group_courses = Course.objects.filter(
+            groups__in=request.user.groups.all())
+        enrolled_courses = Course.objects.filter(
+            enrollments__student=request.user)
+        all_available_courses = (group_courses | enrolled_courses).distinct()
         completed_course_ids = CourseCompletion.objects.filter(
             student=request.user).values_list('course_id', flat=True)
         completed_courses = all_available_courses.filter(id__in=completed_course_ids)
@@ -95,10 +99,65 @@ def dashboard(request):
 
             course_progress[course.id] = pct
 
+        # Собираем дедлайны
+        from django.utils import timezone
+        now = timezone.now()
+        deadlines = []
+
+        for course in all_available_courses:
+            # Дедлайн самого курса
+            if course.available_until:
+                deadlines.append({
+                    'title': course.title,
+                    'subtitle': 'Окончание курса',
+                    'date': course.available_until,
+                    'type': 'course',
+                    'url': f'/course/{course.id}/',
+                    'overdue': course.available_until < now,
+                })
+            # Дедлайны тестов
+            for quiz in Quiz.objects.filter(course=course, available_until__isnull=False):
+                deadlines.append({
+                    'title': quiz.title,
+                    'subtitle': course.title,
+                    'date': quiz.available_until,
+                    'type': 'quiz',
+                    'url': f'/quiz/{quiz.id}/take/',
+                    'overdue': quiz.available_until < now,
+                })
+            # Дедлайны заданий
+            for assignment in Assignment.objects.filter(
+                block__course=course, deadline__isnull=False
+            ).select_related('block'):
+                deadlines.append({
+                    'title': assignment.block.title,
+                    'subtitle': course.title,
+                    'date': assignment.deadline,
+                    'type': 'assignment',
+                    'url': f'/assignment/{assignment.id}/submit/',
+                    'overdue': assignment.deadline < now,
+                })
+
+        # Считаем days_left для каждого
+        for d in deadlines:
+            diff = d['date'] - now
+            d['days_left'] = diff.days if not d['overdue'] else -1
+
+        # Сортируем: сначала просроченные, потом по дате
+        deadlines.sort(key=lambda x: (not x['overdue'], x['date']))
+        deadlines = deadlines[:20]
+
+        # Разделяем на срочные (<=7 дней или просрочены) и будущие (>7 дней)
+        urgent_deadlines = [d for d in deadlines if d['overdue'] or d['days_left'] <= 7]
+        future_deadlines = [d for d in deadlines if not d['overdue'] and d['days_left'] > 7]
+
         return render(request, 'core/dashboard.html', {
             'active_courses': active_courses,
             'completed_courses': completed_courses,
             'course_progress': course_progress,
+            'urgent_deadlines': urgent_deadlines,
+            'future_deadlines': future_deadlines,
+            'now': now,
         })
 
 
@@ -438,6 +497,37 @@ def delete_question(request, question_id):
 
 
 @login_required
+def quiz_result(request, result_id):
+    result = get_object_or_404(StudentResult, id=result_id, student=request.user)
+    quiz = result.quiz
+
+    # Собираем детальную информацию по каждому вопросу
+    questions_data = []
+    for question in quiz.questions.prefetch_related('choices').all():
+        choices = list(question.choices.all())
+        correct = [c for c in choices if c.is_correct]
+        questions_data.append({
+            'question': question,
+            'choices': choices,
+            'correct': correct,
+        })
+
+    # Ссылка назад на курс
+    block = ContentBlock.objects.filter(content_quiz=quiz).first()
+    course = block.course if block else None
+
+    pct = int((result.score / result.max_score) * 100) if result.max_score > 0 else 0
+
+    return render(request, 'core/quiz_result.html', {
+        'result': result,
+        'quiz': quiz,
+        'questions_data': questions_data,
+        'course': course,
+        'pct': pct,
+    })
+
+
+@login_required
 def take_quiz(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id)
 
@@ -487,14 +577,12 @@ def take_quiz(request, quiz_id):
                     if int(ans) in correct_ids:
                         score += 1
 
-        StudentResult.objects.create(
+        result = StudentResult.objects.create(
             student=request.user, quiz=quiz,
             score=score, max_score=max_score)
 
-        block = ContentBlock.objects.filter(content_quiz=quiz).first()
-        if block:
-            return redirect('course_detail', course_id=block.course.id)
-        return redirect('dashboard')
+        # Показываем экран результата
+        return redirect('quiz_result', result_id=result.id)
 
     # GET
     if quiz.shuffle_questions:
@@ -514,6 +602,35 @@ def take_quiz(request, quiz_id):
         'attempts_used': attempts_used,
         'attempts_left': attempts_left,
         'best_result': best_result,
+    })
+
+
+# ---------------------------------------------------------------
+# РЕЗУЛЬТАТ ТЕСТА
+# ---------------------------------------------------------------
+
+@login_required
+def quiz_result(request, result_id):
+    result = get_object_or_404(StudentResult, id=result_id, student=request.user)
+    quiz = result.quiz
+    block = ContentBlock.objects.filter(content_quiz=quiz).first()
+    course = block.course if block else None
+
+    # Лучший результат из всех попыток
+    best = StudentResult.objects.filter(
+        student=request.user, quiz=quiz
+    ).order_by('-score').first()
+
+    attempts_used = StudentResult.objects.filter(
+        student=request.user, quiz=quiz).count()
+
+    return render(request, 'core/quiz_result.html', {
+        'result': result,
+        'quiz': quiz,
+        'course': course,
+        'best': best,
+        'attempts_used': attempts_used,
+        'pct': int((result.score / result.max_score) * 100) if result.max_score else 0,
     })
 
 
@@ -640,12 +757,21 @@ def submit_assignment(request, assignment_id):
 @login_required
 def course_detail(request, course_id):
     if request.user.role == 'student':
-        course = get_object_or_404(
+        # Доступ через группу ИЛИ личную запись
+        has_access = (
             Course.objects.filter(
                 id=course_id,
                 groups__in=request.user.groups.all()
-            ).distinct()
+            ).exists() or
+            CourseEnrollment.objects.filter(
+                student=request.user,
+                course_id=course_id
+            ).exists()
         )
+        if not has_access:
+            from django.http import Http404
+            raise Http404
+        course = get_object_or_404(Course, id=course_id)
     else:
         course = get_object_or_404(Course, id=course_id)
 
@@ -761,6 +887,202 @@ def complete_course(request, course_id):
         if passed_count >= len(quiz_ids):
             CourseCompletion.objects.get_or_create(student=request.user, course=course)
     return redirect('course_detail', course_id=course_id)
+
+
+# ---------------------------------------------------------------
+# СТАТИСТИКА ПРЕПОДАВАТЕЛЯ
+# ---------------------------------------------------------------
+
+@login_required
+@user_passes_test(is_teacher)
+def teacher_stats(request):
+    """Список курсов для выбора статистики"""
+    courses = Course.objects.filter(author=request.user)
+    return render(request, 'core/teacher_stats.html', {'courses': courses})
+
+
+@login_required
+@user_passes_test(is_teacher)
+def course_stats(request, course_id):
+    """Детальная статистика по курсу"""
+    course = get_object_or_404(Course, id=course_id, author=request.user)
+
+    # Все студенты у которых есть доступ к курсу
+    from django.contrib.auth.models import Group
+    students = CustomUser.objects.filter(
+        role='student',
+        groups__in=course.groups.all()
+    ).distinct()
+
+    # Тесты курса
+    quiz_ids = course.blocks.filter(
+        block_type='quiz'
+    ).values_list('content_quiz_id', flat=True)
+    quizzes = Quiz.objects.filter(id__in=quiz_ids)
+
+    # Задания курса
+    assignment_blocks = course.blocks.filter(block_type='assignment')
+    assignments = Assignment.objects.filter(block__in=assignment_blocks)
+
+    # Собираем статистику по каждому студенту
+    student_stats = []
+    for student in students:
+        # Завершил ли курс
+        completed = CourseCompletion.objects.filter(
+            student=student, course=course).exists()
+
+        # Результаты тестов
+        quiz_results = {}
+        for quiz in quizzes:
+            best = StudentResult.objects.filter(
+                student=student, quiz=quiz
+            ).order_by('-score').first()
+            quiz_results[quiz.id] = best
+
+        # Результаты заданий
+        assignment_results = {}
+        for assignment in assignments:
+            sub = Submission.objects.filter(
+                student=student, assignment=assignment
+            ).first()
+            assignment_results[assignment.id] = sub
+
+        # Общий прогресс
+        total = quizzes.count() + assignments.count()
+        done = sum(1 for r in quiz_results.values() if r) +                sum(1 for s in assignment_results.values() if s and s.status == 'graded')
+        pct = int((done / total) * 100) if total > 0 else 0
+
+        student_stats.append({
+            'student': student,
+            'completed': completed,
+            'quiz_results': quiz_results,
+            'assignment_results': assignment_results,
+            'pct': pct,
+            'done': done,
+            'total': total,
+        })
+
+    # Сортируем: сначала завершившие, потом по прогрессу
+    student_stats.sort(key=lambda x: (-x['completed'], -x['pct']))
+
+    return render(request, 'core/course_stats.html', {
+        'course': course,
+        'students': student_stats,
+        'quizzes': quizzes,
+        'assignments': assignments,
+    })
+
+
+# ---------------------------------------------------------------
+# ЗАПИСЬ НА КУРС ПО КОДУ
+# ---------------------------------------------------------------
+
+@login_required
+def enroll_course(request):
+    """Студент вводит код и записывается на курс"""
+    form = EnrollForm(request.POST or None)
+    error = None
+
+    if request.method == 'POST' and form.is_valid():
+        code = form.cleaned_data['access_code'].strip()
+        try:
+            course = Course.objects.get(
+                access_code=code,
+                allow_self_enroll=True
+            )
+        except Course.DoesNotExist:
+            error = 'Курс с таким кодом не найден. Проверьте правильность кода.'
+            return render(request, 'core/enroll.html', {'form': form, 'error': error})
+
+        # Проверяем что уже не записан
+        already = Course.objects.filter(
+            id=course.id,
+            groups__in=request.user.groups.all()
+        ).exists()
+
+        # Записываем через специальную группу курса или личный доступ
+        # Создаём персональную запись через CourseEnrollment
+        enrollment, created = CourseEnrollment.objects.get_or_create(
+            student=request.user,
+            course=course,
+        )
+        if created:
+            messages.success(request, f'Вы успешно записались на курс «{course.title}»!')
+        else:
+            messages.info(request, f'Вы уже записаны на курс «{course.title}».')
+
+        return redirect('course_detail', course_id=course.id)
+
+    return render(request, 'core/enroll.html', {'form': form, 'error': error})
+
+
+# ---------------------------------------------------------------
+# СТАТИСТИКА КУРСА (для преподавателя)
+# ---------------------------------------------------------------
+
+@login_required
+@user_passes_test(is_teacher)
+def course_stats(request, course_id):
+    course = get_object_or_404(Course, id=course_id, author=request.user)
+
+    # Все студенты у которых есть доступ к курсу
+    students = CustomUser.objects.filter(
+        groups__in=course.groups.all(), role='student'
+    ).distinct().order_by('last_name', 'first_name')
+
+    # Все тесты курса
+    quizzes = Quiz.objects.filter(course=course)
+
+    # Все задания курса
+    assignments = Assignment.objects.filter(
+        block__course=course
+    ).select_related('block')
+
+    # Собираем статистику по каждому студенту
+    students_data = []
+    for student in students:
+        # Результаты тестов
+        quiz_results = {}
+        for quiz in quizzes:
+            result = StudentResult.objects.filter(
+                student=student, quiz=quiz
+            ).order_by('-score').first()
+            quiz_results[quiz.id] = result
+
+        # Результаты заданий
+        assignment_results = {}
+        for assignment in assignments:
+            sub = Submission.objects.filter(
+                student=student, assignment=assignment
+            ).first()
+            assignment_results[assignment.id] = sub
+
+        # Общий прогресс
+        total = quizzes.count() + assignments.count()
+        done = sum(1 for r in quiz_results.values() if r)
+        done += sum(1 for s in assignment_results.values() if s and s.status == 'graded')
+        pct = int((done / total) * 100) if total > 0 else 0
+
+        # Завершил ли курс
+        completion = CourseCompletion.objects.filter(
+            student=student, course=course).first()
+
+        students_data.append({
+            'student': student,
+            'quiz_results': quiz_results,
+            'assignment_results': assignment_results,
+            'pct': pct,
+            'done': done,
+            'total': total,
+            'completed': completion,
+        })
+
+    return render(request, 'core/course_stats.html', {
+        'course': course,
+        'students_data': students_data,
+        'quizzes': quizzes,
+        'assignments': assignments,
+    })
 
 
 # ---------------------------------------------------------------

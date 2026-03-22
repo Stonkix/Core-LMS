@@ -1,0 +1,157 @@
+{% extends "core/base.html" %}
+{% load core_extras %}
+{% block content %}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'dashboard' %}" class="text-decoration-none">Дашборд</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'course_builder' course.id %}" class="text-decoration-none">
+                    {{ course.title }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active">Статистика</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">{{ course.title }}</h2>
+            <p class="text-muted mb-0">Успеваемость студентов</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-light text-muted border px-3 py-2">
+                <i class="bi bi-people me-1"></i>{{ students_data|length }} студентов
+            </span>
+            <span class="badge bg-light text-muted border px-3 py-2">
+                <i class="bi bi-check2-square me-1"></i>{{ quizzes|length }} тестов
+            </span>
+            <span class="badge bg-light text-muted border px-3 py-2">
+                <i class="bi bi-pencil-square me-1"></i>{{ assignments|length }} заданий
+            </span>
+        </div>
+    </div>
+
+    {% if students_data %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0" id="statsTable">
+                <thead class="bg-light">
+                    <tr class="small text-uppercase text-muted">
+                        <th class="ps-4" style="min-width:180px;">Студент</th>
+                        <th style="min-width:100px;">Прогресс</th>
+                        {% for quiz in quizzes %}
+                        <th class="text-center" style="min-width:100px;"
+                            title="{{ quiz.title }}">
+                            <i class="bi bi-check2-square text-warning me-1"></i>
+                            {{ quiz.title|truncatechars:15 }}
+                        </th>
+                        {% endfor %}
+                        {% for assignment in assignments %}
+                        <th class="text-center" style="min-width:100px;"
+                            title="{{ assignment.block.title }}">
+                            <i class="bi bi-pencil-square text-info me-1"></i>
+                            {{ assignment.block.title|truncatechars:15 }}
+                        </th>
+                        {% endfor %}
+                        <th class="text-center pe-4">Курс</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in students_data %}
+                    <tr class="{% if row.completed %}table-success-subtle{% endif %}">
+                        <!-- Студент -->
+                        <td class="ps-4">
+                            <div class="fw-semibold">
+                                {{ row.student.get_full_name|default:row.student.username }}
+                            </div>
+                            <small class="text-muted">{{ row.student.username }}</small>
+                        </td>
+
+                        <!-- Прогресс -->
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height:6px;min-width:60px;">
+                                    <div class="progress-bar
+                                        {% if row.pct == 100 %}bg-success
+                                        {% elif row.pct >= 50 %}bg-primary
+                                        {% else %}bg-warning{% endif %}"
+                                         style="width:{{ row.pct }}%;"></div>
+                                </div>
+                                <small class="text-muted fw-semibold" style="min-width:32px;">
+                                    {{ row.pct }}%
+                                </small>
+                            </div>
+                        </td>
+
+                        <!-- Тесты -->
+                        {% for quiz in quizzes %}
+                        {% with result=row.quiz_results|lookup:quiz.id %}
+                        <td class="text-center">
+                            {% if result %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2">
+                                    {{ result.score }}/{{ result.max_score }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        {% endwith %}
+                        {% endfor %}
+
+                        <!-- Задания -->
+                        {% for assignment in assignments %}
+                        {% with sub=row.assignment_results|lookup:assignment.id %}
+                        <td class="text-center">
+                            {% if sub %}
+                                {% if sub.status == 'graded' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2">
+                                    {{ sub.score }}/{{ assignment.max_score }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2">
+                                    <i class="bi bi-hourglass-split me-1"></i>На проверке
+                                </span>
+                                <a href="{% url 'grade_submission' sub.id %}"
+                                   class="btn btn-xs btn-warning py-0 px-1 ms-1"
+                                   style="font-size:.7rem;" title="Проверить">
+                                    <i class="bi bi-check2"></i>
+                                </a>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        {% endwith %}
+                        {% endfor %}
+
+                        <!-- Статус курса -->
+                        <td class="text-center pe-4">
+                            {% if row.completed %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="bi bi-check2-all me-1"></i>Завершён
+                            </span>
+                            {% else %}
+                            <span class="text-muted small">{{ row.done }}/{{ row.total }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5 border rounded-4 bg-light">
+        <i class="bi bi-people display-4 text-muted opacity-25"></i>
+        <p class="text-muted mt-3">Нет студентов с доступом к этому курсу.</p>
+        <small class="text-muted">Назначьте курс группам в настройках курса.</small>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

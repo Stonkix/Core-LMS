@@ -32,7 +32,9 @@ class UserProfileForm(forms.ModelForm):
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ['title', 'description', 'groups', 'available_from', 'available_until']
+        fields = ['title', 'description', 'groups',
+                  'available_from', 'available_until',
+                  'allow_self_enroll', 'access_code']
         widgets = {
             'title':           forms.TextInput(attrs={'class': 'form-control'}),
             'description':     forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -43,11 +45,29 @@ class CourseForm(forms.ModelForm):
             'available_until': forms.DateTimeInput(
                 attrs={'class': 'form-control', 'type': 'datetime-local'},
                 format='%Y-%m-%dT%H:%M'),
+            'access_code':     forms.TextInput(attrs={
+                'class': 'form-control font-monospace',
+                'placeholder': 'Введите или сгенерируйте код',
+            }),
         }
         labels = {
-            'available_from':  'Дата открытия',
-            'available_until': 'Дата закрытия',
+            'available_from':    'Дата открытия',
+            'available_until':   'Дата закрытия',
+            'allow_self_enroll': 'Разрешить подключение по коду',
+            'access_code':       'Код доступа',
         }
+
+
+class EnrollForm(forms.Form):
+    access_code = forms.CharField(
+        label='Код доступа',
+        max_length=32,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control font-monospace text-center',
+            'placeholder': 'Введите код курса...',
+            'autocomplete': 'off',
+        })
+    )
 
 
 class ContentBlockForm(forms.ModelForm):

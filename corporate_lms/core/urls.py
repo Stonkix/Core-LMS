@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('profile/', views.profile_view, name='profile'),
+    path('enroll/', views.enroll_course, name='enroll_course'),
 
     # Курсы
     path('course/create/', views.create_course, name='create_course'),
@@ -11,6 +12,7 @@ urlpatterns = [
     path('course/builder/<int:course_id>/', views.course_builder, name='course_builder'),
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/complete/', views.complete_course, name='complete_course'),
+    path('course/<int:course_id>/stats/', views.course_stats, name='course_stats'),
 
     # Блоки контента
     path('course/<int:course_id>/add_block/', views.add_block, name='add_block'),
@@ -29,6 +31,8 @@ urlpatterns = [
     path('question/<int:question_id>/delete/', views.delete_question, name='delete_question'),
     path('quiz/<int:quiz_id>/questions/reorder/', views.reorder_questions, name='reorder_questions'),
     path('quiz/<int:quiz_id>/take/', views.take_quiz, name='take_quiz'),
+    path('quiz/result/<int:result_id>/', views.quiz_result, name='quiz_result'),
+    path('quiz/result/<int:result_id>/', views.quiz_result, name='quiz_result'),
 
     # Задания
     path('block/<int:block_id>/assignment/edit/', views.edit_assignment, name='edit_assignment'),
@@ -37,6 +41,9 @@ urlpatterns = [
     path('assignment/<int:assignment_id>/submit/', views.submit_assignment, name='submit_assignment'),
 
     # REST API
+    path('stats/', views.teacher_stats, name='teacher_stats'),
+    path('stats/<int:course_id>/', views.course_stats, name='course_stats'),
+
     path('api/courses/', views.CourseListAPI.as_view(), name='api_course_list'),
     path('api/courses/<int:pk>/', views.CourseDetailAPI.as_view(), name='api_course_detail'),
 
