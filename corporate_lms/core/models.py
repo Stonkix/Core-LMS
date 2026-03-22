@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 import os
 
@@ -199,6 +199,7 @@ class CourseCompletion(models.Model):
 
 @receiver(pre_save, sender=CustomUser)
 def delete_old_avatar(sender, instance, **kwargs):
+    """Удаляем старую аватарку при замене"""
     if not instance.pk:
         return
     try:
@@ -213,3 +214,33 @@ def delete_old_avatar(sender, instance, **kwargs):
                 os.remove(old_avatar.path)
         except (ValueError, OSError):
             pass
+
+
+def _delete_file(file_field):
+    """Безопасно удаляем файл с диска"""
+    if not file_field:
+        return
+    try:
+        path = file_field.path
+        if os.path.isfile(path):
+            os.remove(path)
+    except (ValueError, OSError, Exception):
+        pass
+
+
+@receiver(post_delete, sender=ContentBlock)
+def delete_block_file(sender, instance, **kwargs):
+    """При удалении блока удаляем прикреплённый файл"""
+    _delete_file(instance.content_file)
+
+
+@receiver(post_delete, sender=CustomUser)
+def delete_user_avatar(sender, instance, **kwargs):
+    """При удалении пользователя удаляем аватарку"""
+    _delete_file(instance.avatar)
+
+
+@receiver(post_delete, sender=Submission)
+def delete_submission_file(sender, instance, **kwargs):
+    """При удалении ответа на задание удаляем прикреплённый файл"""
+    _delete_file(instance.file)
