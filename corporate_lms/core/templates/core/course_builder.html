@@ -26,17 +26,13 @@
                     <button onclick="openModal('file')" class="btn btn-light text-start border">
                         <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Файл / Видео
                     </button>
-                    <button onclick="openModal('quiz')" class="btn btn-light text-start border">
-                        <i class="bi bi-check2-square me-2 text-warning"></i>Привязать тест
-                    </button>
-                    <button onclick="openModal('assignment')" class="btn btn-light text-start border">
-                        <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
-                    </button>
-                    <hr class="my-1">
-                    <a href="{% url 'create_quiz' course.id %}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-plus-lg me-1"></i>Создать тест
+                    <a href="{% url 'create_quiz' course.id %}" class="btn btn-light text-start border">
+                        <i class="bi bi-check2-square me-2 text-warning"></i>Добавить тест
                     </a>
-                </div>
+                    <button onclick="openModal('assignment')" class="btn btn-light text-start border">
+                                <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
+                        </button>
+                    </div>
                 <hr>
                 <h6 class="fw-bold mb-2 text-muted small text-uppercase">Добавить раздел</h6>
                 <form action="{% url 'add_section' course.id %}" method="post" class="d-flex gap-2">

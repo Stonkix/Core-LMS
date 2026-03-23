@@ -43,18 +43,14 @@
                     <button onclick="openModal('file')" class="btn btn-light text-start border">
                         <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Файл / Видео
                     </button>
-                    <button onclick="openModal('quiz')" class="btn btn-light text-start border">
-                        <i class="bi bi-check2-square me-2 text-warning"></i>Привязать тест
-                    </button>
+                    <a href="{% url 'create_quiz' course.id %}?section_id={{ section.id }}" class="btn btn-light text-start border">
+                        <i class="bi bi-check2-square me-2 text-warning"></i>Добавить тест
+                    </a>
                     <button onclick="openModal('assignment')" class="btn btn-light text-start border">
                         <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
                     </button>
                 </div>
 
-                <hr>
-                <a href="{% url 'create_quiz' course.id %}" class="btn btn-outline-primary btn-sm w-100">
-                    <i class="bi bi-plus-lg me-1"></i>Создать новый тест
-                </a>
             </div>
         </div>
 
@@ -132,6 +128,7 @@
                         <option value="{{ q.id }}">{{ q.title }}</option>
                         {% endfor %}
                     </select>
+
                 </div>
                 <div id="assignment-fields" style="display:none;">
                     <div class="p-3 bg-light rounded-3 border text-muted small">

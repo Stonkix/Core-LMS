@@ -15,6 +15,17 @@
         </a>
     </div>
 
+    <!-- Предупреждение: нет вопросов -->
+    {% if questions.count == 0 %}
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" id="noQuestionsAlert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>
+            <strong>В тесте нет вопросов.</strong>
+            Тест недоступен студентам, пока не добавлен хотя бы один вопрос.
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row g-4">
         <!-- Форма добавления вопроса -->
         <div class="col-lg-5">
@@ -59,7 +70,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h5 class="fw-bold mb-0">
                         Вопросы
-                        <span class="badge bg-primary ms-2">{{ questions.count }}</span>
+                        <span class="badge bg-primary ms-2" id="questionsCountBadge">{{ questions.count }}</span>
                     </h5>
                     {% if questions.count > 1 %}
                     <small class="text-muted">
@@ -86,7 +97,7 @@
                             </div>
                         </div>
                         <form action="{% url 'delete_question' q.id %}" method="post"
-                              onsubmit="return confirm('Удалить вопрос?')" class="ms-2 flex-shrink-0">
+                              onsubmit="return confirmDelete(event)" class="ms-2 flex-shrink-0">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="bi bi-trash3"></i>
@@ -110,7 +121,7 @@
                 {% empty %}
                 <div class="text-center py-5 text-muted" id="emptyState">
                     <i class="bi bi-question-circle display-4 opacity-25 d-block mb-2"></i>
-                    Вопросов пока нет. Добавьте первый.
+                    Вопросов пока нет. Добавьте первый слева.
                 </div>
                 {% endfor %}
                 </div>
@@ -170,11 +181,11 @@
 <script>
 // ── Варианты ответов ──────────────────────────────────────────
 
-let rows = []; // [{id, el}]
+let rows = [];
 let rowCounter = 0;
 
-const container   = document.getElementById('choicesContainer');
-const submitBtn   = document.getElementById('submitBtn');
+const container = document.getElementById('choicesContainer');
+const submitBtn = document.getElementById('submitBtn');
 
 function reindex() {
     rows.forEach((r, i) => {
@@ -228,8 +239,24 @@ function updateToggle(id) {
 
 // 2 варианта по умолчанию
 addChoice(); addChoice();
-
 document.getElementById('addChoiceBtn').addEventListener('click', addChoice);
+
+
+// ── Проверка минимума вопросов при удалении ───────────────────
+
+function confirmDelete(e) {
+    const currentCount = document.querySelectorAll('.question-card').length;
+    if (currentCount <= 1) {
+        e.preventDefault();
+        if (!confirm('Это последний вопрос в тесте. Тест станет недоступен для студентов. Всё равно удалить?')) {
+            return false;
+        }
+        // Разрешаем отправку формы вручную
+        e.target.closest('form').submit();
+        return false;
+    }
+    return confirm('Удалить вопрос?');
+}
 
 
 // ── Drag-and-drop для готовых вопросов ───────────────────────
@@ -257,7 +284,6 @@ list.addEventListener('dragover', e => {
     if (!card || card === dragSrc) return;
     list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
     card.classList.add('drag-over');
-    // Вставляем перед или после в зависимости от позиции курсора
     const rect = card.getBoundingClientRect();
     const mid  = rect.top + rect.height / 2;
     if (e.clientY < mid) {
@@ -270,7 +296,6 @@ list.addEventListener('dragover', e => {
 list.addEventListener('drop', e => {
     e.preventDefault();
     list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-    // Сохраняем новый порядок на сервер
     saveOrder();
 });
 
@@ -278,9 +303,7 @@ function saveOrder() {
     const ids = [...list.querySelectorAll('.question-card')]
         .map(c => c.dataset.questionId)
         .filter(Boolean);
-
     if (!ids.length) return;
-
     fetch('{% url "reorder_questions" quiz.id %}', {
         method: 'POST',
         headers: {
@@ -288,10 +311,10 @@ function saveOrder() {
             'X-CSRFToken': '{{ csrf_token }}',
         },
         body: JSON.stringify({order: ids}),
-    }).catch(() => {}); // тихая ошибка — порядок просто не сохранится
+    }).catch(() => {});
 }
 
-// Перенумеровываем номера вопросов после перетаскивания визуально
+// Перенумеровываем визуально после перетаскивания
 list.addEventListener('dragend', () => {
     list.querySelectorAll('.question-card').forEach((card, i) => {
         const title = card.querySelector('.fw-semibold');

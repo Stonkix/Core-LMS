@@ -1,79 +1,418 @@
 {% extends "core/base.html" %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-7">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h3 class="fw-bold mb-4">Создание нового теста</h3>
-                <form method="post">
-                    {% csrf_token %}
+    <div class="col-md-8">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <a href="{% url 'course_builder' course.id %}" class="btn btn-outline-secondary btn-sm">← В конструктор</a>
+            <h3 class="fw-bold mb-0">Новый тест</h3>
+        </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">НАЗВАНИЕ ТЕСТА</label>
-                        {{ form.title }}
-                    </div>
+        {% if error %}
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ error }}
+        </div>
+        {% endif %}
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">МАКСИМУМ ПОПЫТОК</label>
-                        {{ form.max_attempts }}
-                        <div class="form-text">0 — неограниченное количество попыток.</div>
-                    </div>
-
-                    <div class="mb-4">
-                        <div class="form-check form-switch">
-                            {{ form.shuffle_questions }}
-                            <label class="form-check-label fw-semibold"
-                                   for="{{ form.shuffle_questions.id_for_label }}">
-                                Перемешивать вопросы
-                            </label>
-                        </div>
-                        <div class="form-text">Каждый студент получит вопросы в случайном порядке.</div>
-                    </div>
-
-                    <!-- Таймер -->
-                    <div class="p-3 bg-light rounded-3 border mb-4">
-                        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
-                            <i class="bi bi-hourglass-split me-2"></i>Ограничение времени
-                        </h6>
-                        <div class="d-flex align-items-center gap-2" style="max-width:260px;">
-                            {{ form.time_limit_minutes }}
-                            <span class="input-group-text bg-white border rounded-2 px-3 flex-shrink-0">мин</span>
-                        </div>
-                        <div class="form-text mt-2">
-                            Пусто — тест без ограничения времени. При истечении таймера ответы отправляются автоматически.
-                        </div>
-                    </div>
-
-                    <!-- Даты теста -->
-                    <div class="p-3 bg-light rounded-3 border mb-4">
-                        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
-                            <i class="bi bi-calendar-range me-2"></i>Период доступности теста
-                        </h6>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Открывается</label>
-                                {{ form.available_from }}
-                                <div class="form-text">Пусто — доступен сразу</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Закрывается</label>
-                                {{ form.available_until }}
-                                <div class="form-text">Пусто — без дедлайна</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary py-2">
-                            Создать тест и добавить вопросы
-                        </button>
-                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">
-                            Отмена
-                        </a>
-                    </div>
-                </form>
+        <!-- ── Индикатор шагов ── -->
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                     id="step1-circle"
+                     style="width:32px;height:32px;background:#0d6efd;color:#fff;font-size:.85rem;">1</div>
+                <span class="fw-semibold" id="step1-label">Настройки теста</span>
+            </div>
+            <div class="flex-grow-1 border-top mx-2"></div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                     id="step2-circle"
+                     style="width:32px;height:32px;background:#e9ecef;color:#6c757d;font-size:.85rem;">2</div>
+                <span class="text-muted" id="step2-label">Вопросы</span>
             </div>
         </div>
+
+        <form method="post" id="quizCreateForm">
+            {% csrf_token %}
+            {% if section_id %}
+            <input type="hidden" name="section_id" value="{{ section_id }}">
+            {% endif %}
+            <input type="hidden" name="block_title" id="block_title_input" value="{{ block_title }}">
+
+            <!-- ═══════════════════════════════════════════
+                 ШАГ 1 — Настройки теста
+            ═══════════════════════════════════════════ -->
+            <div id="step1">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-4">Настройки теста</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">НАЗВАНИЕ ТЕСТА</label>
+                            {{ form.title }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">МАКСИМУМ ПОПЫТОК</label>
+                            {{ form.max_attempts }}
+                            <div class="form-text">0 — неограниченное количество попыток.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.shuffle_questions }}
+                                <label class="form-check-label fw-semibold"
+                                       for="{{ form.shuffle_questions.id_for_label }}">
+                                    Перемешивать вопросы
+                                </label>
+                            </div>
+                            <div class="form-text">Каждый студент получит вопросы в случайном порядке.</div>
+                        </div>
+
+                        <!-- Таймер -->
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+                                <i class="bi bi-hourglass-split me-2"></i>Ограничение времени
+                            </h6>
+                            <div class="d-flex align-items-center gap-2" style="max-width:260px;">
+                                {{ form.time_limit_minutes }}
+                                <span class="input-group-text bg-white border rounded-2 px-3 flex-shrink-0">мин</span>
+                            </div>
+                            <div class="form-text mt-2">
+                                Пусто — тест без ограничения времени. При истечении таймера ответы отправляются автоматически.
+                            </div>
+                        </div>
+
+                        <!-- Даты теста -->
+                        <div class="p-3 bg-light rounded-3 border">
+                            <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+                                <i class="bi bi-calendar-range me-2"></i>Период доступности теста
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Открывается</label>
+                                    {{ form.available_from }}
+                                    <div class="form-text">Пусто — доступен сразу</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Закрывается</label>
+                                    {{ form.available_until }}
+                                    <div class="form-text">Пусто — без дедлайна</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mb-5">
+                    <button type="button" class="btn btn-primary btn-lg py-2" id="toStep2Btn">
+                        Далее: добавить вопросы <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                    <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">Отмена</a>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════
+                 ШАГ 2 — Вопросы
+            ═══════════════════════════════════════════ -->
+            <div id="step2" style="display:none;">
+
+                <!-- Краткая сводка настроек -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="fw-bold" id="summaryTitle">—</span>
+                            <span class="badge bg-light text-muted border" id="summaryAttempts"></span>
+                            <span class="badge bg-light text-muted border" id="summaryTimer"></span>
+                            <span class="badge bg-light text-muted border d-none" id="summaryShuffle">Перемешивать</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="backToStep1Btn">
+                            <i class="bi bi-pencil me-1"></i>Изменить настройки
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold mb-0">
+                                Вопросы
+                                <span class="badge bg-primary ms-2" id="questionCount">0</span>
+                            </h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addQuestionBtn">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить вопрос
+                            </button>
+                        </div>
+
+                        <div id="noQuestionsWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            Добавьте хотя бы один вопрос, чтобы сохранить тест.
+                        </div>
+
+                        <div id="questionsList"></div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mb-5">
+                    <button type="submit" class="btn btn-success btn-lg py-2" id="submitBtn" disabled>
+                        <i class="bi bi-check-circle me-2"></i>Создать тест
+                    </button>
+                    <button type="button" class="btn btn-light border" id="backToStep1Btn2">
+                        <i class="bi bi-arrow-left me-1"></i>Назад к настройкам
+                    </button>
+                </div>
+            </div>
+
+        </form>
     </div>
 </div>
+
+<!-- ── Шаблон вопроса (скрыт) ── -->
+<template id="questionTemplate">
+    <div class="question-block border rounded-3 p-4 mb-3 bg-light" data-qindex="">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-bold text-muted small question-label">ВОПРОС 1</span>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-question-btn">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+
+        <div class="mb-3">
+            <textarea name="" class="form-control question-text-input" rows="2"
+                      placeholder="Введите текст вопроса..." required></textarea>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label small fw-bold text-muted mb-0">ВАРИАНТЫ ОТВЕТОВ</label>
+            <button type="button" class="btn btn-sm btn-outline-secondary add-choice-btn">
+                <i class="bi bi-plus-lg me-1"></i>Добавить вариант
+            </button>
+        </div>
+
+        <div class="choices-container"></div>
+
+        <div class="form-text mt-1">
+            Отметьте правильные галочкой.
+            <span class="text-primary small">
+                <i class="bi bi-info-circle me-1"></i>
+                Несколько галочек → автоматически множественный выбор
+            </span>
+        </div>
+    </div>
+</template>
+
+<!-- ── Шаблон варианта ответа (скрыт) ── -->
+<template id="choiceTemplate">
+    <div class="choice-row d-flex align-items-center gap-2 bg-white border rounded-3 p-2 mb-2">
+        <input type="text" class="form-control form-control-sm choice-text-input"
+               placeholder="Вариант..." required style="min-width:0;">
+        <label class="correct-toggle d-flex align-items-center gap-1 flex-shrink-0
+                      px-2 py-1 rounded-2 border small" style="cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" class="correct-checkbox" value="1"
+                   style="width:15px;height:15px;accent-color:#198754;cursor:pointer;">
+            <i class="bi bi-check2"></i> Верный
+        </label>
+        <button type="button" class="btn btn-sm btn-light border flex-shrink-0 remove-choice-btn">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+</template>
+
+<style>
+.correct-toggle { background:#f8fafc; color:#94a3b8; border-color:#e2e8f0 !important; transition:all .15s; }
+.correct-toggle.is-correct { background:#d1fae5 !important; border-color:#198754 !important; color:#065f46 !important; font-weight:600; }
+.question-block { transition: box-shadow .15s; }
+.question-block:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08) !important; }
+</style>
+
+<script>
+(function () {
+    const form        = document.getElementById('quizCreateForm');
+    const list        = document.getElementById('questionsList');
+    const countBadge  = document.getElementById('questionCount');
+    const submitBtn   = document.getElementById('submitBtn');
+    const warning     = document.getElementById('noQuestionsWarning');
+    const qTmpl       = document.getElementById('questionTemplate');
+    const cTmpl       = document.getElementById('choiceTemplate');
+
+    const step1El     = document.getElementById('step1');
+    const step2El     = document.getElementById('step2');
+    const step1Circle = document.getElementById('step1-circle');
+    const step1Label  = document.getElementById('step1-label');
+    const step2Circle = document.getElementById('step2-circle');
+    const step2Label  = document.getElementById('step2-label');
+
+    /* ── Переход на шаг 2 ── */
+    function goToStep2() {
+        const titleInput = document.querySelector('[name="title"]');
+        if (!titleInput || !titleInput.value.trim()) {
+            if (titleInput) {
+                titleInput.classList.add('is-invalid');
+                titleInput.focus();
+            }
+            return;
+        }
+        titleInput.classList.remove('is-invalid');
+
+        // Заполняем сводку
+        document.getElementById('summaryTitle').textContent = titleInput.value.trim();
+
+        const attempts = document.querySelector('[name="max_attempts"]');
+        document.getElementById('summaryAttempts').textContent =
+            attempts && attempts.value == '0' ? '∞ попыток'
+            : (attempts ? attempts.value + ' попыток' : '');
+
+        const timer = document.querySelector('[name="time_limit_minutes"]');
+        document.getElementById('summaryTimer').textContent =
+            timer && timer.value ? timer.value + ' мин' : 'Без таймера';
+
+        const shuffle = document.querySelector('[name="shuffle_questions"]');
+        document.getElementById('summaryShuffle').classList.toggle('d-none', !(shuffle && shuffle.checked));
+
+        // Переключаем отображение
+        step1El.style.display = 'none';
+        step2El.style.display = '';
+
+        // Индикаторы
+        step1Circle.style.background = '#198754';
+        step1Circle.innerHTML = '<i class="bi bi-check-lg" style="font-size:.8rem;"></i>';
+        step1Label.classList.remove('fw-semibold');
+        step1Label.classList.add('text-success');
+
+        step2Circle.style.background = '#0d6efd';
+        step2Circle.style.color = '#fff';
+        step2Label.classList.remove('text-muted');
+        step2Label.classList.add('fw-semibold');
+    }
+
+    /* ── Возврат на шаг 1 ── */
+    function goToStep1() {
+        step2El.style.display = 'none';
+        step1El.style.display = '';
+
+        step1Circle.style.background = '#0d6efd';
+        step1Circle.style.color = '#fff';
+        step1Circle.innerHTML = '1';
+        step1Label.classList.add('fw-semibold');
+        step1Label.classList.remove('text-success');
+
+        step2Circle.style.background = '#e9ecef';
+        step2Circle.style.color = '#6c757d';
+        step2Label.classList.add('text-muted');
+        step2Label.classList.remove('fw-semibold');
+    }
+
+    document.getElementById('toStep2Btn').addEventListener('click', goToStep2);
+    document.getElementById('backToStep1Btn').addEventListener('click', goToStep1);
+    document.getElementById('backToStep1Btn2').addEventListener('click', goToStep1);
+
+    /* ── Обновляем кнопку отправки ── */
+    function updateSubmitState() {
+        const count = list.querySelectorAll('.question-block').length;
+        countBadge.textContent = count;
+        submitBtn.disabled = count === 0;
+        warning.style.display = count > 0 ? 'none' : '';
+    }
+
+    /* ── Добавить вариант ответа ── */
+    function addChoice(container, qIdx, cIdx) {
+        const node = cTmpl.content.cloneNode(true);
+        const row  = node.querySelector('.choice-row');
+
+        const textInput   = row.querySelector('.choice-text-input');
+        const checkbox    = row.querySelector('.correct-checkbox');
+        const toggleLabel = row.querySelector('.correct-toggle');
+        const removeBtn   = row.querySelector('.remove-choice-btn');
+
+        textInput.name = `q${qIdx}_choice_text_${cIdx}`;
+        checkbox.name  = `q${qIdx}_choice_correct_${cIdx}`;
+
+        checkbox.addEventListener('change', () => {
+            toggleLabel.classList.toggle('is-correct', checkbox.checked);
+        });
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            reindexChoices(container, qIdx);
+        });
+
+        container.appendChild(row);
+    }
+
+    /* ── Переиндексировать варианты ── */
+    function reindexChoices(container, qIdx) {
+        container.querySelectorAll('.choice-row').forEach((row, i) => {
+            const n = i + 1;
+            row.querySelector('.choice-text-input').name        = `q${qIdx}_choice_text_${n}`;
+            row.querySelector('.choice-text-input').placeholder = `Вариант ${n}`;
+            row.querySelector('.correct-checkbox').name         = `q${qIdx}_choice_correct_${n}`;
+        });
+    }
+
+    /* ── Добавить вопрос ── */
+    function addQuestion() {
+        const qIdx  = Date.now();
+        const node  = qTmpl.content.cloneNode(true);
+        const block = node.querySelector('.question-block');
+
+        block.dataset.qindex = qIdx;
+
+        const qNum = list.querySelectorAll('.question-block').length + 1;
+        block.querySelector('.question-label').textContent = `ВОПРОС ${qNum}`;
+        block.querySelector('.question-text-input').name   = `q${qIdx}_text`;
+
+        block.querySelector('.remove-question-btn').addEventListener('click', () => {
+            block.remove();
+            renumberQuestions();
+            updateSubmitState();
+        });
+
+        const choicesContainer = block.querySelector('.choices-container');
+        block.querySelector('.add-choice-btn').addEventListener('click', () => {
+            const nextIdx = choicesContainer.querySelectorAll('.choice-row').length + 1;
+            addChoice(choicesContainer, qIdx, nextIdx);
+        });
+
+        addChoice(choicesContainer, qIdx, 1);
+        addChoice(choicesContainer, qIdx, 2);
+
+        list.appendChild(block);
+        updateSubmitState();
+    }
+
+    /* ── Перенумеровать заголовки ── */
+    function renumberQuestions() {
+        list.querySelectorAll('.question-block').forEach((b, i) => {
+            b.querySelector('.question-label').textContent = `ВОПРОС ${i + 1}`;
+        });
+    }
+
+    /* ── Валидация перед отправкой ── */
+    form.addEventListener('submit', function (e) {
+        const blocks = list.querySelectorAll('.question-block');
+        if (blocks.length === 0) {
+            e.preventDefault();
+            warning.style.display = '';
+            warning.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+
+        let countInput = document.getElementById('_question_count');
+        if (!countInput) {
+            countInput = Object.assign(document.createElement('input'),
+                { type: 'hidden', id: '_question_count', name: 'question_count' });
+            form.appendChild(countInput);
+        }
+        countInput.value = blocks.length;
+
+        let idxInput = document.getElementById('_question_indices');
+        if (!idxInput) {
+            idxInput = Object.assign(document.createElement('input'),
+                { type: 'hidden', id: '_question_indices', name: 'question_indices' });
+            form.appendChild(idxInput);
+        }
+        idxInput.value = [...blocks].map(b => b.dataset.qindex).join(',');
+    });
+
+    document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
+    updateSubmitState();
+})();
+</script>
 {% endblock %}

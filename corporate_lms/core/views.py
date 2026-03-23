@@ -413,16 +413,92 @@ def delete_block(request, block_id):
 @user_passes_test(is_teacher)
 def create_quiz(request, course_id):
     course = get_object_or_404(Course, id=course_id, author=request.user)
+    # section_id и block_title передаются из конструктора чтобы автоматически создать блок
+    section_id = request.GET.get('section_id') or request.POST.get('section_id')
+    block_title = request.GET.get('block_title', '')
+
     if request.method == 'POST':
         form = QuizForm(request.POST)
+
+        # Собираем индексы вопросов переданные из формы
+        question_indices = [
+            idx.strip()
+            for idx in request.POST.get('question_indices', '').split(',')
+            if idx.strip()
+        ]
+
+        # Валидация: хотя бы один вопрос
+        if not question_indices:
+            return render(request, 'core/quiz_form.html', {
+                'form': form,
+                'course': course,
+                'section_id': section_id,
+                'error': 'Добавьте хотя бы один вопрос перед сохранением теста.',
+            })
+
         if form.is_valid():
             quiz = form.save(commit=False)
             quiz.course = course
             quiz.save()
-            return redirect('manage_questions', quiz_id=quiz.id)
+
+            # Создаём вопросы и варианты ответов
+            for order, qidx in enumerate(question_indices):
+                question_text = request.POST.get(f'q{qidx}_text', '').strip()
+                if not question_text:
+                    continue
+
+                choices_data = []
+                i = 1
+                while True:
+                    choice_text = request.POST.get(f'q{qidx}_choice_text_{i}', '').strip()
+                    if not choice_text:
+                        break
+                    is_correct = request.POST.get(f'q{qidx}_choice_correct_{i}') == '1'
+                    choices_data.append({'text': choice_text, 'is_correct': is_correct})
+                    i += 1
+
+                correct_count = sum(1 for c in choices_data if c['is_correct'])
+                is_multiple = correct_count > 1
+
+                question = Question.objects.create(
+                    quiz=quiz,
+                    text=question_text,
+                    is_multiple=is_multiple,
+                    order=order,
+                )
+
+                for c in choices_data:
+                    Choice.objects.create(
+                        question=question,
+                        text=c['text'],
+                        is_correct=c['is_correct'],
+                    )
+
+            # Автоматически создаём блок и возвращаемся в конструктор
+            block = ContentBlock(
+                course=course,
+                title=request.POST.get('block_title', quiz.title),
+                block_type='quiz',
+                content_quiz=quiz,
+                order=course.blocks.count(),
+            )
+            if section_id:
+                try:
+                    block.section = Section.objects.get(id=section_id, course=course)
+                except Section.DoesNotExist:
+                    pass
+            block.save()
+
+            return redirect('course_builder', course_id=course.id)
     else:
         form = QuizForm()
-    return render(request, 'core/quiz_form.html', {'form': form, 'course': course})
+
+    return render(request, 'core/quiz_form.html', {
+        'form': form,
+        'course': course,
+        'section_id': section_id,
+        'block_title': block_title,
+    })
 
 
 @login_required
