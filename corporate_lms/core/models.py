@@ -57,6 +57,10 @@ class Quiz(models.Model):
         default=False,
         help_text='Перемешивать вопросы случайно для каждого студента'
     )
+    time_limit_minutes = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Ограничение по времени в минутах. Пусто — без ограничений.'
+    )
     available_from = models.DateTimeField(null=True, blank=True,
         help_text='Дата открытия теста. Пусто — доступен сразу.')
     available_until = models.DateTimeField(null=True, blank=True,

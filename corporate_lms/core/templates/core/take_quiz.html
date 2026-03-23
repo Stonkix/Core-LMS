@@ -3,7 +3,7 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
 
-        <div class="text-center mb-5">
+        <div class="text-center mb-4">
             <h2 class="fw-bold">{{ quiz.title }}</h2>
             {% if quiz.max_attempts > 0 %}
             <div class="d-inline-flex align-items-center gap-2 mt-2 px-3 py-1 rounded-pill
@@ -17,6 +17,19 @@
             </div>
             {% endif %}
         </div>
+
+        <!-- Таймер -->
+        {% if quiz.time_limit_minutes and not blocked %}
+        <div id="quiz-timer-wrap" class="text-center mb-4">
+            <div id="quiz-timer"
+                 class="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill fw-bold fs-5"
+                 style="background:#f1f5f9;border:2px solid #cbd5e1;color:#334155;transition:background .3s,border-color .3s,color .3s;">
+                <i class="bi bi-hourglass-split" id="timer-icon"></i>
+                <span id="timer-display">{{ quiz.time_limit_minutes }}:00</span>
+            </div>
+            <div class="form-text mt-1">По истечении времени ответы отправятся автоматически.</div>
+        </div>
+        {% endif %}
 
         {% if blocked %}
         <div class="card border-0 shadow-sm text-center p-5">
@@ -61,7 +74,7 @@
             Для вопросов с несколькими ответами — отметьте все верные.
         </p>
 
-        <form method="post">
+        <form method="post" id="quiz-form">
             {% csrf_token %}
             {% for question in questions %}
             <div class="card mb-4 border-0 shadow-sm">
@@ -133,5 +146,92 @@
     color: #0d6efd;
     font-weight: 600;
 }
+
+@keyframes pulse-timer {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.06); opacity: .85; }
+}
 </style>
+
+{% if quiz.time_limit_minutes and not blocked %}
+<script>
+(function () {
+    const TOTAL_SECONDS  = {{ quiz.time_limit_minutes }} * 60;
+    const STORAGE_KEY    = 'quiz_timer_{{ quiz.id }}_{{ request.user.id }}';
+
+    // Восстанавливаем остаток из sessionStorage (на случай обновления страницы)
+    let stored = parseInt(sessionStorage.getItem(STORAGE_KEY));
+    let remaining = (!isNaN(stored) && stored > 0 && stored <= TOTAL_SECONDS)
+        ? stored
+        : TOTAL_SECONDS;
+
+    const displayEl = document.getElementById('timer-display');
+    const timerEl   = document.getElementById('quiz-timer');
+    const iconEl    = document.getElementById('timer-icon');
+    const form      = document.getElementById('quiz-form');
+
+    function fmt(s) {
+        const m   = Math.floor(s / 60);
+        const sec = s % 60;
+        return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    }
+
+    function applyStyle(pct) {
+        if (pct <= 0.10) {
+            // ≤10% — красный + пульсация
+            timerEl.style.background    = '#fee2e2';
+            timerEl.style.borderColor   = '#f87171';
+            timerEl.style.color         = '#b91c1c';
+            timerEl.style.animation     = 'pulse-timer .8s infinite';
+            iconEl.className            = 'bi bi-hourglass-bottom';
+        } else if (pct <= 0.25) {
+            // ≤25% — оранжевый
+            timerEl.style.background    = '#fff7ed';
+            timerEl.style.borderColor   = '#fb923c';
+            timerEl.style.color         = '#c2410c';
+            timerEl.style.animation     = '';
+            iconEl.className            = 'bi bi-hourglass-split';
+        } else {
+            // Больше 25% — нейтральный
+            timerEl.style.background    = '#f1f5f9';
+            timerEl.style.borderColor   = '#cbd5e1';
+            timerEl.style.color         = '#334155';
+            timerEl.style.animation     = '';
+            iconEl.className            = 'bi bi-hourglass-split';
+        }
+    }
+
+    // Первоначальный рендер
+    displayEl.textContent = fmt(remaining);
+    applyStyle(remaining / TOTAL_SECONDS);
+
+    const timer = setInterval(function () {
+        remaining--;
+        sessionStorage.setItem(STORAGE_KEY, remaining);
+        displayEl.textContent = fmt(Math.max(remaining, 0));
+        applyStyle(remaining / TOTAL_SECONDS);
+
+        if (remaining <= 0) {
+            clearInterval(timer);
+            sessionStorage.removeItem(STORAGE_KEY);
+            displayEl.textContent           = '00:00';
+            timerEl.style.background        = '#fee2e2';
+            timerEl.style.borderColor       = '#f87171';
+            timerEl.style.color             = '#b91c1c';
+            timerEl.style.animation         = '';
+            // Авто-отправка
+            if (form) form.submit();
+        }
+    }, 1000);
+
+    // Очищаем storage при ручной отправке
+    if (form) {
+        form.addEventListener('submit', function () {
+            sessionStorage.removeItem(STORAGE_KEY);
+        });
+    }
+})();
+</script>
+{% endif %}
+
 {% endblock %}

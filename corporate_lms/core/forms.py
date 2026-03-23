@@ -87,12 +87,16 @@ class QuizForm(forms.ModelForm):
     class Meta:
         model = Quiz
         fields = ['title', 'max_attempts', 'shuffle_questions',
+                  'time_limit_minutes',
                   'available_from', 'available_until']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'max_attempts': forms.NumberInput(attrs={
                 'class': 'form-control', 'min': '0',
                 'placeholder': '0 — без ограничений',
+            }),
+            'time_limit_minutes': forms.NumberInput(attrs={
+                'class': 'form-control', 'min': '1',
             }),
             'available_from':  forms.DateTimeInput(
                 attrs={'class': 'form-control', 'type': 'datetime-local'},
@@ -102,16 +106,18 @@ class QuizForm(forms.ModelForm):
                 format='%Y-%m-%dT%H:%M'),
         }
         labels = {
-            'max_attempts':    'Максимум попыток',
-            'shuffle_questions': 'Перемешивать вопросы',
-            'available_from':  'Дата открытия теста',
-            'available_until': 'Дата закрытия теста',
+            'max_attempts':       'Максимум попыток',
+            'shuffle_questions':  'Перемешивать вопросы',
+            'time_limit_minutes': 'Ограничение времени (мин)',
+            'available_from':     'Дата открытия теста',
+            'available_until':    'Дата закрытия теста',
         }
         help_texts = {
-            'max_attempts':    '0 — неограниченное количество попыток.',
-            'shuffle_questions': 'Каждый студент получит вопросы в случайном порядке.',
-            'available_from':  'Пусто — тест доступен сразу.',
-            'available_until': 'Пусто — тест без дедлайна.',
+            'max_attempts':       '0 — неограниченное количество попыток.',
+            'shuffle_questions':  'Каждый студент получит вопросы в случайном порядке.',
+            'time_limit_minutes': 'Пусто — тест без ограничения времени.',
+            'available_from':     'Пусто — тест доступен сразу.',
+            'available_until':    'Пусто — тест без дедлайна.',
         }
 
 

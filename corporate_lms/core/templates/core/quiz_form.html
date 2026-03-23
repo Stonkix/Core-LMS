@@ -30,6 +30,20 @@
                         <div class="form-text">Каждый студент получит вопросы в случайном порядке.</div>
                     </div>
 
+                    <!-- Таймер -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
+                        <h6 class="fw-bold mb-3 small text-uppercase text-muted">
+                            <i class="bi bi-hourglass-split me-2"></i>Ограничение времени
+                        </h6>
+                        <div class="d-flex align-items-center gap-2" style="max-width:260px;">
+                            {{ form.time_limit_minutes }}
+                            <span class="input-group-text bg-white border rounded-2 px-3 flex-shrink-0">мин</span>
+                        </div>
+                        <div class="form-text mt-2">
+                            Пусто — тест без ограничения времени. При истечении таймера ответы отправляются автоматически.
+                        </div>
+                    </div>
+
                     <!-- Даты теста -->
                     <div class="p-3 bg-light rounded-3 border mb-4">
                         <h6 class="fw-bold mb-3 small text-uppercase text-muted">
