@@ -27,12 +27,12 @@
                         <i class="bi bi-file-earmark-arrow-up me-2 text-success"></i>Файл / Видео
                     </button>
                     <a href="{% url 'create_quiz' course.id %}" class="btn btn-light text-start border">
-                        <i class="bi bi-check2-square me-2 text-warning"></i>Добавить тест
+                        <i class="bi bi-check2-square me-2 text-warning"></i>Создать тест
                     </a>
                     <button onclick="openModal('assignment')" class="btn btn-light text-start border">
-                                <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
-                        </button>
-                    </div>
+                        <i class="bi bi-pencil-square me-2 text-danger"></i>Задание
+                    </button>
+                </div>
                 <hr>
                 <h6 class="fw-bold mb-2 text-muted small text-uppercase">Добавить раздел</h6>
                 <form action="{% url 'add_section' course.id %}" method="post" class="d-flex gap-2">
@@ -139,7 +139,7 @@
     </div>
 </div>
 
-<!-- Модалка -->
+<!-- Модалка добавления блока (текст, файл, задание) -->
 <div class="modal fade" id="addBlockModal" tabindex="-1">
     <div class="modal-dialog">
         <form action="{% url 'add_block' course.id %}" method="post"
@@ -169,15 +169,6 @@
                     <label class="form-label fw-bold">Файл</label>
                     <input type="file" name="content_file" id="fileInput" class="form-control">
                     <div id="fileInfo" class="mt-1 text-muted small" style="display:none;"></div>
-                </div>
-                <div id="quiz-fields" style="display:none;">
-                    <label class="form-label fw-bold">Тест</label>
-                    <select name="content_quiz" class="form-select">
-                        <option value="">— выберите тест —</option>
-                        {% for q in quizzes %}
-                        <option value="{{ q.id }}">{{ q.title }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
                 <div id="assignment-fields" style="display:none;">
                     <div class="p-3 bg-light rounded-3 border text-muted small">
@@ -247,7 +238,7 @@ const MOVE_URL = '{% url "move_block" course.id %}';
 const REORDER_URL = '{% url "reorder_blocks" course.id %}';
 const REORDER_SECTIONS_URL = '{% url "reorder_sections" course.id %}';
 
-const TITLES = {text:'Текст', file:'Файл / Видео', quiz:'Тест', assignment:'Задание'};
+const TITLES = {text:'Текст', file:'Файл / Видео', assignment:'Задание'};
 const sectionNames = {
     {% for section in sections %}"{{ section.id }}": "{{ section.title|escapejs }}",{% endfor %}
 };
@@ -270,7 +261,7 @@ function openModalInSection(type, sectionId) {
 function _showModal(type) {
     document.getElementById('modalTitle').textContent = TITLES[type] || 'Блок';
     document.getElementById('id_block_type').value = type;
-    ['text','file','quiz','assignment'].forEach(t =>
+    ['text','file','assignment'].forEach(t =>
         document.getElementById(t+'-fields').style.display = 'none');
     document.getElementById(type+'-fields').style.display = 'block';
     document.getElementById('fileInfo').style.display = 'none';

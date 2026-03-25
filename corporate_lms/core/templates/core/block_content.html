@@ -31,39 +31,65 @@
 
         {% elif block.block_type == 'quiz' and block.content_quiz %}
             {% with quiz=block.content_quiz %}
-            <div class="text-center py-3 bg-light rounded-3 border">
-                {% if quiz.id in passed_quiz_ids %}
-                    <p class="text-success fw-bold mb-0">
-                        <i class="bi bi-check-circle-fill me-2"></i>Тест «{{ quiz.title }}» пройден
-                    </p>
-                {% else %}
-                    {% if quiz.max_attempts > 0 %}
-                    {% with att=attempts_by_quiz|lookup:quiz.id %}
-                    {% if att %}
-                    <div class="mb-2">
-                        {% if att.blocked %}
-                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
-                            <i class="bi bi-lock me-1"></i>Попытки исчерпаны ({{ att.used }}/{{ att.max }})
+            <div class="py-3 bg-light rounded-3 border px-4">
+
+                {# Заголовок теста #}
+                <div class="text-center mb-3">
+                    <div class="fw-bold fs-5 mb-1">{{ quiz.title }}</div>
+                    <div class="d-flex justify-content-center flex-wrap gap-3 text-muted" style="font-size:.85rem;">
+                        <span>
+                            <i class="bi bi-list-check me-1 text-warning"></i>
+                            {{ quiz.questions.count }} вопрос{{ quiz.questions.count|pluralize:",,ов" }}
                         </span>
-                        {% else %}
-                        <span class="badge bg-light text-muted border px-3 py-2">
-                            <i class="bi bi-arrow-repeat me-1"></i>Осталось попыток: {{ att.left }} из {{ att.max }}
+                        {% if quiz.time_limit %}
+                        <span>
+                            <i class="bi bi-clock me-1 text-primary"></i>
+                            {{ quiz.time_limit }} мин.
+                        </span>
+                        {% endif %}
+                        {% if quiz.max_attempts > 0 %}
+                        <span>
+                            <i class="bi bi-arrow-repeat me-1 text-secondary"></i>
+                            до {{ quiz.max_attempts }} попыток
                         </span>
                         {% endif %}
                     </div>
-                    {% if not att.blocked %}
-                    <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
-                        Пройти тест: {{ quiz.title }}
-                    </a>
-                    {% endif %}
-                    {% endif %}
-                    {% endwith %}
+                </div>
+
+                {# Статус и кнопка #}
+                <div class="text-center">
+                    {% if quiz.id in passed_quiz_ids %}
+                        <p class="text-success fw-bold mb-0">
+                            <i class="bi bi-check-circle-fill me-2"></i>Тест пройден
+                        </p>
                     {% else %}
-                    <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
-                        Пройти тест: {{ quiz.title }}
-                    </a>
+                        {% if quiz.max_attempts > 0 %}
+                        {% with att=attempts_by_quiz|lookup:quiz.id %}
+                        {% if att %}
+                            {% if att.blocked %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2">
+                                <i class="bi bi-lock me-1"></i>Попытки исчерпаны ({{ att.used }}/{{ att.max }})
+                            </span>
+                            {% else %}
+                            <div class="mb-2">
+                                <span class="badge bg-light text-muted border px-3 py-2">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Осталось попыток: {{ att.left }} из {{ att.max }}
+                                </span>
+                            </div>
+                            <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
+                                <i class="bi bi-play-fill me-1"></i>Начать тест
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                        {% endwith %}
+                        {% else %}
+                        <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-warning fw-bold px-4">
+                            <i class="bi bi-play-fill me-1"></i>Начать тест
+                        </a>
+                        {% endif %}
                     {% endif %}
-                {% endif %}
+                </div>
+
             </div>
             {% endwith %}
 
