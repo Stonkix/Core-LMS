@@ -3,326 +3,178 @@
 <div class="container py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="fw-bold mb-0">{{ quiz.title }}</h3>
-            <small class="text-muted">
-                Попыток: {% if quiz.max_attempts == 0 %}без ограничений{% else %}{{ quiz.max_attempts }}{% endif %} ·
-                {% if quiz.shuffle_questions %}вопросы перемешиваются{% else %}порядок фиксирован{% endif %}
-            </small>
-        </div>
-        <a href="{% url 'course_builder' quiz.course.id %}" class="btn btn-outline-secondary btn-sm">
-            ← В конструктор
+        <h2 class="fw-bold">Тест: {{ quiz.title }}</h2>
+        <a href="{% url 'course_builder' course.id %}" class="btn btn-success">
+            <i class="bi bi-check2 me-1"></i>Завершить создание теста
         </a>
     </div>
 
-    <!-- Предупреждение: нет вопросов -->
-    {% if questions.count == 0 %}
-    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4" id="noQuestionsAlert">
-        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-        <div>
-            <strong>В тесте нет вопросов.</strong>
-            Тест недоступен студентам, пока не добавлен хотя бы один вопрос.
-        </div>
-    </div>
-    {% endif %}
-
     <div class="row g-4">
-        <!-- Форма добавления вопроса -->
+
+        <!-- Левая панель: Новый вопрос -->
         <div class="col-lg-5">
-            <div class="card border-0 shadow-sm p-4 sticky-top" style="top:20px;">
-                <h5 class="fw-bold mb-4">Новый вопрос</h5>
-                <form action="{% url 'add_question' quiz.id %}" method="post" id="questionForm">
-                    {% csrf_token %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">Новый вопрос</div>
+                <div class="card-body">
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">ТЕКСТ ВОПРОСА</label>
-                        <textarea name="question_text" class="form-control" rows="3"
-                                  placeholder="Введите вопрос..." required></textarea>
-                    </div>
+                    <form method="post" id="addQuestionForm">
+                        {% csrf_token %}
 
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label class="form-label small fw-bold text-muted mb-0">ВАРИАНТЫ ОТВЕТОВ</label>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="addChoiceBtn">
-                                <i class="bi bi-plus-lg me-1"></i>Добавить
-                            </button>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">ТЕКСТ ВОПРОСА</label>
+                            <textarea name="text" class="form-control" rows="3" placeholder="Введите вопрос..." required></textarea>
                         </div>
-                        <div id="choicesContainer"></div>
-                        <div class="form-text mt-1">
-                            Отметьте правильные галочкой.<br>
-                            <span class="text-primary small">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Несколько галочек → автоматически множественный выбор
-                            </span>
-                        </div>
-                    </div>
 
-                    <button type="submit" class="btn btn-success w-100" id="submitBtn" disabled>
-                        <i class="bi bi-plus-circle me-1"></i>Добавить вопрос
-                    </button>
-                </form>
+                        <label class="form-label fw-bold">ВАРИАНТЫ ОТВЕТОВ</label>
+                        <div id="choices-container" class="mb-3"></div>
+
+                        <button type="button" id="add-choice-btn" class="btn btn-outline-primary btn-sm mb-3">
+                            <i class="bi bi-plus-lg"></i> Добавить вариант
+                        </button>
+
+                        <div class="form-text mb-4">
+                            Отметьте правильные ответы галочкой.<br>
+                            <strong>Несколько галочек = множественный выбор</strong>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 py-3 fw-bold">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить вопрос
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <!-- Список вопросов с drag-and-drop -->
+        <!-- Правая панель: Список вопросов -->
         <div class="col-lg-7">
-            <div class="card border-0 shadow-sm p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h5 class="fw-bold mb-0">
-                        Вопросы
-                        <span class="badge bg-primary ms-2" id="questionsCountBadge">{{ questions.count }}</span>
-                    </h5>
-                    {% if questions.count > 1 %}
-                    <small class="text-muted">
-                        <i class="bi bi-grip-vertical me-1"></i>Перетащите для сортировки
-                    </small>
-                    {% endif %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <h5 class="mb-0">Вопросы <span class="badge bg-primary">{{ total_questions }}</span></h5>
+                    <small class="text-muted">Перетащите для сортировки</small>
                 </div>
 
-                <div id="questionsList">
-                {% for q in questions %}
-                <div class="question-card mb-3 p-3 border rounded-3 bg-light"
-                     data-question-id="{{ q.id }}" draggable="true">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="d-flex align-items-start gap-2 flex-grow-1">
-                            <i class="bi bi-grip-vertical text-muted mt-1 drag-handle"
-                               style="cursor:grab;font-size:1.1rem;flex-shrink:0;"></i>
-                            <div>
-                                <span class="fw-semibold">{{ forloop.counter }}. {{ q.text }}</span>
-                                {% if q.is_multiple %}
-                                <span class="badge bg-info-subtle text-info border border-info-subtle ms-1 small">
-                                    мульти
-                                </span>
-                                {% endif %}
+                <div class="card-body" id="questions-list">
+                    {% for q in questions %}
+                    <div class="question-item card mb-3 shadow-sm" draggable="true" data-id="{{ q.id }}">
+                        <div class="card-body py-3 px-4">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-grip-vertical text-muted me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                        <span class="fw-bold text-primary">{{ forloop.counter }}.</span>
+                                        <span class="flex-grow-1">{{ q.text }}</span>
+                                        {% if q.is_multiple %}
+                                            <span class="badge bg-info">мульти</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="ms-4">
+                                        {% for choice in q.choices.all %}
+                                        <div class="d-flex align-items-center gap-2 small mb-1">
+                                            {% if choice.is_correct %}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            {% else %}
+                                                <i class="bi bi-circle text-muted"></i>
+                                            {% endif %}
+                                            {{ choice.text }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <a href="{% url 'delete_question' q.id %}" 
+                                   class="btn btn-sm btn-outline-danger ms-2"
+                                   onclick="return confirm('Удалить вопрос?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
                             </div>
                         </div>
-                        <form action="{% url 'delete_question' q.id %}" method="post"
-                              onsubmit="return confirmDelete(event)" class="ms-2 flex-shrink-0">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash3"></i>
-                            </button>
-                        </form>
                     </div>
-                    <ul class="list-unstyled mb-0 ms-4">
-                        {% for choice in q.choices.all %}
-                        <li class="small py-1 d-flex align-items-center gap-2">
-                            {% if choice.is_correct %}
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                                <span class="text-success fw-semibold">{{ choice.text }}</span>
-                            {% else %}
-                                <i class="bi bi-circle text-muted"></i>
-                                <span class="text-muted">{{ choice.text }}</span>
-                            {% endif %}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% empty %}
-                <div class="text-center py-5 text-muted" id="emptyState">
-                    <i class="bi bi-question-circle display-4 opacity-25 d-block mb-2"></i>
-                    Вопросов пока нет. Добавьте первый слева.
-                </div>
-                {% endfor %}
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-question-circle fs-1"></i>
+                        <p class="mt-3">Вопросов пока нет.<br>Добавьте первый слева.</p>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{% url 'edit_quiz_settings' quiz.id %}" class="btn btn-outline-secondary px-5">
+            ← Изменить настройки теста
+        </a>
     </div>
 </div>
 
-<style>
-.question-card { transition: box-shadow .15s, opacity .15s; }
-.question-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1) !important; }
-.question-card.dragging { opacity: .4; }
-.question-card.drag-over { border: 2px dashed #0d6efd !important; background: #f0f6ff !important; }
-
-.choice-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin-bottom: 6px;
-    transition: border-color .15s;
-}
-.choice-row:focus-within { border-color: #0d6efd; }
-
-.correct-toggle {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-shrink: 0;
-    cursor: pointer;
-    padding: 3px 8px;
-    border-radius: 6px;
-    border: 1.5px solid #e2e8f0;
-    background: #f8fafc;
-    transition: all .15s;
-    font-size: .8rem;
-    color: #94a3b8;
-    white-space: nowrap;
-}
-.correct-toggle input[type="checkbox"] {
-    width: 15px;
-    height: 15px;
-    accent-color: #198754;
-    cursor: pointer;
-}
-.correct-toggle.is-correct {
-    border-color: #198754;
-    background: #d1fae5;
-    color: #065f46;
-    font-weight: 600;
-}
-</style>
-
 <script>
-// ── Варианты ответов ──────────────────────────────────────────
-
-let rows = [];
-let rowCounter = 0;
-
-const container = document.getElementById('choicesContainer');
-const submitBtn = document.getElementById('submitBtn');
-
-function reindex() {
-    rows.forEach((r, i) => {
-        const n = i + 1;
-        r.el.querySelector('input[type="text"]').name        = `choice_text_${n}`;
-        r.el.querySelector('input[type="text"]').placeholder = `Вариант ${n}`;
-        r.el.querySelector('input[type="checkbox"]').name    = `choice_correct_${n}`;
-    });
-    submitBtn.disabled = rows.length < 2;
-}
+// === Добавление вариантов с нормальными чекбоксами ===
+let choiceIndex = 0;
 
 function addChoice() {
-    rowCounter++;
-    const id  = rowCounter;
+    choiceIndex++;
+    const container = document.getElementById('choices-container');
+    
     const div = document.createElement('div');
-    div.className = 'choice-row';
-    div.dataset.rid = id;
-
+    div.className = 'input-group mb-2';
     div.innerHTML = `
-        <input type="text" name="choice_text_${id}" class="form-control form-control-sm"
-               placeholder="Вариант" required style="min-width:0;">
-        <label class="correct-toggle" id="toggle_${id}">
-            <input type="checkbox" name="choice_correct_${id}" value="1"
-                   onchange="updateToggle(${id})">
-            <i class="bi bi-check2"></i> Верный
-        </label>
-        <button type="button" class="btn btn-sm btn-light border flex-shrink-0"
-                onclick="removeChoice(${id})" title="Удалить">
-            <i class="bi bi-x"></i>
-        </button>
+        <input type="text" name="choice_text[]" class="form-control" placeholder="Вариант ${choiceIndex}" required>
+        <div class="input-group-text px-3">
+            <input type="checkbox" name="correct[]" value="${choiceIndex-1}" class="form-check-input me-2">
+            <span class="text-muted small">Верный</span>
+        </div>
+        <button type="button" class="btn btn-outline-danger remove-choice">×</button>
     `;
-
     container.appendChild(div);
-    rows.push({id, el: div});
-    reindex();
+
+    div.querySelector('.remove-choice').addEventListener('click', () => div.remove());
 }
 
-function removeChoice(id) {
-    rows = rows.filter(r => {
-        if (r.id === id) { r.el.remove(); return false; }
-        return true;
-    });
-    reindex();
-}
-
-function updateToggle(id) {
-    const label = document.getElementById(`toggle_${id}`);
-    const cb    = label.querySelector('input[type="checkbox"]');
-    label.classList.toggle('is-correct', cb.checked);
-}
-
-// 2 варианта по умолчанию
-addChoice(); addChoice();
-document.getElementById('addChoiceBtn').addEventListener('click', addChoice);
-
-
-// ── Проверка минимума вопросов при удалении ───────────────────
-
-function confirmDelete(e) {
-    const currentCount = document.querySelectorAll('.question-card').length;
-    if (currentCount <= 1) {
-        e.preventDefault();
-        if (!confirm('Это последний вопрос в тесте. Тест станет недоступен для студентов. Всё равно удалить?')) {
-            return false;
-        }
-        // Разрешаем отправку формы вручную
-        e.target.closest('form').submit();
-        return false;
+// При загрузке добавляем два варианта
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('choices-container');
+    if (container.children.length === 0) {
+        addChoice();
+        addChoice();
     }
-    return confirm('Удалить вопрос?');
-}
-
-
-// ── Drag-and-drop для готовых вопросов ───────────────────────
-
-const list = document.getElementById('questionsList');
-let dragSrc = null;
-
-list.addEventListener('dragstart', e => {
-    const card = e.target.closest('.question-card');
-    if (!card) return;
-    dragSrc = card;
-    card.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
+    document.getElementById('add-choice-btn').addEventListener('click', addChoice);
 });
 
-list.addEventListener('dragend', e => {
-    const card = e.target.closest('.question-card');
-    if (card) card.classList.remove('dragging');
-    list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
+// Drag & Drop (остаётся без изменений)
+const list = document.getElementById('questions-list');
+let dragged = null;
+
+list.addEventListener('dragstart', e => {
+    if (e.target.classList.contains('question-item')) {
+        dragged = e.target;
+        e.target.style.opacity = '0.4';
+    }
+});
+
+list.addEventListener('dragend', () => {
+    if (dragged) dragged.style.opacity = '1';
+    dragged = null;
+    saveOrder();
 });
 
 list.addEventListener('dragover', e => {
     e.preventDefault();
-    const card = e.target.closest('.question-card');
-    if (!card || card === dragSrc) return;
-    list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-    card.classList.add('drag-over');
-    const rect = card.getBoundingClientRect();
-    const mid  = rect.top + rect.height / 2;
-    if (e.clientY < mid) {
-        list.insertBefore(dragSrc, card);
-    } else {
-        list.insertBefore(dragSrc, card.nextSibling);
-    }
-});
-
-list.addEventListener('drop', e => {
-    e.preventDefault();
-    list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-    saveOrder();
+    const afterElement = [...list.querySelectorAll('.question-item')].find(el => {
+        const rect = el.getBoundingClientRect();
+        return e.clientY < rect.top + rect.height / 2;
+    });
+    if (afterElement) list.insertBefore(dragged, afterElement);
+    else list.appendChild(dragged);
 });
 
 function saveOrder() {
-    const ids = [...list.querySelectorAll('.question-card')]
-        .map(c => c.dataset.questionId)
-        .filter(Boolean);
-    if (!ids.length) return;
+    const ids = [...list.querySelectorAll('.question-item')].map(el => el.dataset.id);
     fetch('{% url "reorder_questions" quiz.id %}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-        },
-        body: JSON.stringify({order: ids}),
-    }).catch(() => {});
-}
-
-// Перенумеровываем визуально после перетаскивания
-list.addEventListener('dragend', () => {
-    list.querySelectorAll('.question-card').forEach((card, i) => {
-        const title = card.querySelector('.fw-semibold');
-        if (title) {
-            title.childNodes[0].textContent =
-                `${i + 1}. ${title.childNodes[0].textContent.replace(/^\d+\.\s*/, '')}`;
-        }
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ order: ids })
     });
-});
+}
 </script>
 {% endblock %}

@@ -82,43 +82,41 @@ class ContentBlockForm(forms.ModelForm):
             'content_quiz': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Убираем обязательность для всех полей, кроме заголовка
+        self.fields['content_text'].required = False
+        self.fields['content_file'].required = False
+        self.fields['content_quiz'].required = False
+        self.fields['block_type'].required = False
+        
+
 
 class QuizForm(forms.ModelForm):
     class Meta:
         model = Quiz
-        fields = ['title', 'max_attempts', 'shuffle_questions',
-                  'time_limit_minutes',
-                  'available_from', 'available_until']
+        # ТОЛЬКО те поля, которые есть в моделях
+        fields = ['title', 'time_limit_minutes', 'max_attempts', 
+                  'shuffle_questions', 'available_from', 'available_until']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control'}),
-            'max_attempts': forms.NumberInput(attrs={
-                'class': 'form-control', 'min': '0',
-                'placeholder': '0 — без ограничений',
-            }),
-            'time_limit_minutes': forms.NumberInput(attrs={
-                'class': 'form-control', 'min': '1',
-            }),
-            'available_from':  forms.DateTimeInput(
-                attrs={'class': 'form-control', 'type': 'datetime-local'},
-                format='%Y-%m-%dT%H:%M'),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Название теста'}),
+            'time_limit_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'max_attempts': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'shuffle_questions': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'available_from': forms.DateTimeInput(
+                attrs={'class': 'form-control', 'type': 'datetime-local'}, 
+                format='%Y-%m-%dT%H:%M'
+            ),
             'available_until': forms.DateTimeInput(
-                attrs={'class': 'form-control', 'type': 'datetime-local'},
-                format='%Y-%m-%dT%H:%M'),
+                attrs={'class': 'form-control', 'type': 'datetime-local'}, 
+                format='%Y-%m-%dT%H:%M'
+            ),
         }
-        labels = {
-            'max_attempts':       'Максимум попыток',
-            'shuffle_questions':  'Перемешивать вопросы',
-            'time_limit_minutes': 'Ограничение времени (мин)',
-            'available_from':     'Дата открытия теста',
-            'available_until':    'Дата закрытия теста',
-        }
-        help_texts = {
-            'max_attempts':       '0 — неограниченное количество попыток.',
-            'shuffle_questions':  'Каждый студент получит вопросы в случайном порядке.',
-            'time_limit_minutes': 'Пусто — тест без ограничения времени.',
-            'available_from':     'Пусто — тест доступен сразу.',
-            'available_until':    'Пусто — тест без дедлайна.',
-        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['available_from'].input_formats = ('%Y-%m-%dT%H:%M',)
+        self.fields['available_until'].input_formats = ('%Y-%m-%dT%H:%M',)
 
 
 class AssignmentForm(forms.ModelForm):

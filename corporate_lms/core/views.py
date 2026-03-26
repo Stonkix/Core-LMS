@@ -408,22 +408,19 @@ def reorder_blocks(request, course_id):
 @login_required
 @user_passes_test(is_teacher)
 def edit_block(request, block_id):
-    # FIX: select_related гарантирует что block.course загружен и не None в шаблоне
-    block = get_object_or_404(
-        ContentBlock.objects.select_related('course', 'section'),
-        id=block_id,
-        course__author=request.user,
-    )
+    block = get_object_or_404(ContentBlock, id=block_id)
     if request.method == 'POST':
         form = ContentBlockForm(request.POST, request.FILES, instance=block)
         if form.is_valid():
-            form.save()
-            if block.section_id:
-                return redirect('edit_section', section_id=block.section_id)
-            return redirect('course_builder', course_id=block.course_id)
+            form.save() # instance=block обновит существующую запись, а не создаст новую
+            return redirect('course_builder', course_id=block.course.id)
     else:
         form = ContentBlockForm(instance=block)
-    return render(request, 'core/edit_block.html', {'form': form, 'block': block})
+    
+    return render(request, 'core/edit_block.html', {
+        'form': form,
+        'content_block': block # используй content_block, чтобы не было конфликта в HTML
+    })
 
 
 @login_required
@@ -448,104 +445,99 @@ def delete_block(request, block_id):
 @login_required
 @user_passes_test(is_teacher)
 def create_quiz(request, course_id):
+    """ЭТАП 1: Создание теста + блок в конец курса"""
     course = get_object_or_404(Course, id=course_id, author=request.user)
+
     if request.method == 'POST':
         form = QuizForm(request.POST)
-
-        # Собираем индексы вопросов переданные из формы
-        question_indices = [
-            idx.strip()
-            for idx in request.POST.get('question_indices', '').split(',')
-            if idx.strip()
-        ]
-
-        # Валидация: хотя бы один вопрос
-        if not question_indices:
-            return render(request, 'core/quiz_form.html', {
-                'form': form,
-                'course': course,
-                'error': 'Добавьте хотя бы один вопрос перед сохранением теста.',
-            })
-
         if form.is_valid():
             quiz = form.save(commit=False)
             quiz.course = course
             quiz.save()
 
-            # Создаём вопросы и варианты ответов
-            for order, qidx in enumerate(question_indices):
-                question_text = request.POST.get(f'q{qidx}_text', '').strip()
-                if not question_text:
-                    continue
-
-                # Собираем варианты ответов для этого вопроса
-                choices_data = []
-                i = 1
-                while True:
-                    choice_text = request.POST.get(f'q{qidx}_choice_text_{i}', '').strip()
-                    if not choice_text:
-                        break
-                    is_correct = request.POST.get(f'q{qidx}_choice_correct_{i}') == '1'
-                    choices_data.append({'text': choice_text, 'is_correct': is_correct})
-                    i += 1
-
-                # Тип вопроса: множественный если правильных > 1
-                correct_count = sum(1 for c in choices_data if c['is_correct'])
-                is_multiple = correct_count > 1
-
-                question = Question.objects.create(
-                    quiz=quiz,
-                    text=question_text,
-                    is_multiple=is_multiple,
-                    order=order,
-                )
-
-                for c in choices_data:
-                    Choice.objects.create(
-                        question=question,
-                        text=c['text'],
-                        is_correct=c['is_correct'],
-                    )
-
-            # Автоматически создаём блок и возвращаемся в конструктор
-            section_id = request.POST.get('section_id')
-            block = ContentBlock(
+            # Создаём блок В КОНЕЦ курса
+            block = ContentBlock.objects.create(
                 course=course,
-                title=request.POST.get('block_title', quiz.title),
+                section=None,  # или можно передавать section_id, если нужно
+                title=quiz.title,
                 block_type='quiz',
                 content_quiz=quiz,
-                order=course.blocks.count(),
+                order=course.blocks.count()  # ← вот главное исправление
             )
-            if section_id:
-                try:
-                    block.section = Section.objects.get(id=section_id, course=course)
-                except Section.DoesNotExist:
-                    pass
-            block.save()
-            return redirect('course_builder', course_id=course.id)
+
+            messages.success(request, f'Тест «{quiz.title}» создан. Добавьте вопросы.')
+            return redirect('manage_questions', quiz_id=quiz.id)
     else:
         form = QuizForm()
 
-    section_id = request.GET.get('section_id', '')
     return render(request, 'core/quiz_form.html', {
         'form': form,
         'course': course,
-        'section_id': section_id,
     })
 
 
 @login_required
 @user_passes_test(is_teacher)
 def manage_questions(request, quiz_id):
-    # FIX: select_related гарантирует что quiz.course загружен для шаблона
-    quiz = get_object_or_404(
-        Quiz.objects.select_related('course'),
-        id=quiz_id,
-        course__author=request.user,
-    )
-    questions = quiz.questions.all().prefetch_related('choices')
-    return render(request, 'core/manage_questions.html', {
-        'quiz': quiz, 'questions': questions,
+    """ЭТАП 2: Конструктор вопросов"""
+    quiz = get_object_or_404(Quiz.objects.select_related('course'), id=quiz_id)
+    questions = quiz.questions.order_by('order')
+
+    if request.method == 'POST':
+        text = request.POST.get('text', '').strip()
+        if text:
+            correct_count = len([x for x in request.POST.getlist('correct[]') if x])
+            is_multiple = correct_count > 1
+
+            question = Question.objects.create(
+                quiz=quiz,
+                text=text,
+                is_multiple=is_multiple,
+                order=questions.count() + 1
+            )
+
+            choice_texts = request.POST.getlist('choice_text[]')
+            correct_indices = request.POST.getlist('correct[]')
+
+            for i, txt in enumerate(choice_texts):
+                if txt.strip():
+                    Choice.objects.create(
+                        question=question,
+                        text=txt.strip(),
+                        is_correct=str(i) in correct_indices
+                    )
+
+            messages.success(request, 'Вопрос добавлен')
+            return redirect('manage_questions', quiz_id=quiz.id)
+
+    context = {
+        'quiz': quiz,
+        'course': quiz.course,
+        'questions': questions,
+        'total_questions': questions.count(),
+    }
+    return render(request, 'core/manage_questions.html', context)
+
+@login_required
+@user_passes_test(is_teacher)
+def edit_quiz_settings(request, quiz_id):
+    """Редактирование настроек уже созданного теста"""
+    quiz = get_object_or_404(Quiz, id=quiz_id, course__author=request.user)
+
+    if request.method == 'POST':
+        form = QuizForm(request.POST, instance=quiz)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Настройки теста сохранены')
+            return redirect('manage_questions', quiz_id=quiz.id)   # ← теперь правильно возвращает
+    else:
+        form = QuizForm(instance=quiz)
+
+    return render(request, 'core/quiz_form.html', {
+        'form': form,
+        'course': quiz.course,
+        'quiz': quiz,
+        'is_edit': True,
     })
 
 
