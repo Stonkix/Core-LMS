@@ -44,6 +44,12 @@
                 <i class="bi bi-gear"></i>
             </a>
         {% endif %}
+        {% if block.block_type == 'text' or block.block_type == 'file' %}
+        <a href="{% url 'edit_block' block.id %}"
+           class="btn btn-sm btn-light border py-1 px-2" title="Редактировать">
+            <i class="bi bi-pencil"></i>
+        </a>
+        {% endif %}
         <form action="{% url 'delete_block' block.id %}" method="post"
               onsubmit="return confirm('Удалить «{{ block.title }}»?')">
             {% csrf_token %}

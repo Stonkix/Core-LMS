@@ -9,7 +9,6 @@ urlpatterns = [
     # Курсы
     path('course/create/', views.create_course, name='create_course'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
-    path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
     path('course/builder/<int:course_id>/', views.course_builder, name='course_builder'),
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/complete/', views.complete_course, name='complete_course'),
@@ -18,6 +17,7 @@ urlpatterns = [
     # Блоки контента
     path('course/<int:course_id>/add_block/', views.add_block, name='add_block'),
     path('block/<int:block_id>/delete/', views.delete_block, name='delete_block'),
+    path('block/<int:block_id>/edit/', views.edit_block, name='edit_block'),
     path('course/<int:course_id>/reorder_blocks/', views.reorder_blocks, name='reorder_blocks'),
     path('course/<int:course_id>/move_block/', views.move_block, name='move_block'),
     path('course/<int:course_id>/section/add/', views.add_section, name='add_section'),

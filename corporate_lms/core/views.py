@@ -407,8 +407,34 @@ def reorder_blocks(request, course_id):
 
 @login_required
 @user_passes_test(is_teacher)
+def edit_block(request, block_id):
+    # FIX: select_related гарантирует что block.course загружен и не None в шаблоне
+    block = get_object_or_404(
+        ContentBlock.objects.select_related('course', 'section'),
+        id=block_id,
+        course__author=request.user,
+    )
+    if request.method == 'POST':
+        form = ContentBlockForm(request.POST, request.FILES, instance=block)
+        if form.is_valid():
+            form.save()
+            if block.section_id:
+                return redirect('edit_section', section_id=block.section_id)
+            return redirect('course_builder', course_id=block.course_id)
+    else:
+        form = ContentBlockForm(instance=block)
+    return render(request, 'core/edit_block.html', {'form': form, 'block': block})
+
+
+@login_required
+@user_passes_test(is_teacher)
 def delete_block(request, block_id):
-    block = get_object_or_404(ContentBlock, id=block_id, course__author=request.user)
+    # FIX: select_related чтобы block.course.id не падал
+    block = get_object_or_404(
+        ContentBlock.objects.select_related('course'),
+        id=block_id,
+        course__author=request.user,
+    )
     course_id = block.course.id
     if request.method == 'POST':
         block.delete()
@@ -481,16 +507,42 @@ def create_quiz(request, course_id):
                         is_correct=c['is_correct'],
                     )
 
-            return redirect('manage_questions', quiz_id=quiz.id)
+            # Автоматически создаём блок и возвращаемся в конструктор
+            section_id = request.POST.get('section_id')
+            block = ContentBlock(
+                course=course,
+                title=request.POST.get('block_title', quiz.title),
+                block_type='quiz',
+                content_quiz=quiz,
+                order=course.blocks.count(),
+            )
+            if section_id:
+                try:
+                    block.section = Section.objects.get(id=section_id, course=course)
+                except Section.DoesNotExist:
+                    pass
+            block.save()
+            return redirect('course_builder', course_id=course.id)
     else:
         form = QuizForm()
-    return render(request, 'core/quiz_form.html', {'form': form, 'course': course})
+
+    section_id = request.GET.get('section_id', '')
+    return render(request, 'core/quiz_form.html', {
+        'form': form,
+        'course': course,
+        'section_id': section_id,
+    })
 
 
 @login_required
 @user_passes_test(is_teacher)
 def manage_questions(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, course__author=request.user)
+    # FIX: select_related гарантирует что quiz.course загружен для шаблона
+    quiz = get_object_or_404(
+        Quiz.objects.select_related('course'),
+        id=quiz_id,
+        course__author=request.user,
+    )
     questions = quiz.questions.all().prefetch_related('choices')
     return render(request, 'core/manage_questions.html', {
         'quiz': quiz, 'questions': questions,
@@ -558,36 +610,6 @@ def delete_question(request, question_id):
         question.delete()
     return redirect('manage_questions', quiz_id=quiz_id)
 
-
-@login_required
-def quiz_result(request, result_id):
-    result = get_object_or_404(StudentResult, id=result_id, student=request.user)
-    quiz = result.quiz
-
-    # Собираем детальную информацию по каждому вопросу
-    questions_data = []
-    for question in quiz.questions.prefetch_related('choices').all():
-        choices = list(question.choices.all())
-        correct = [c for c in choices if c.is_correct]
-        questions_data.append({
-            'question': question,
-            'choices': choices,
-            'correct': correct,
-        })
-
-    # Ссылка назад на курс
-    block = ContentBlock.objects.filter(content_quiz=quiz).first()
-    course = block.course if block else None
-
-    pct = int((result.score / result.max_score) * 100) if result.max_score > 0 else 0
-
-    return render(request, 'core/quiz_result.html', {
-        'result': result,
-        'quiz': quiz,
-        'questions_data': questions_data,
-        'course': course,
-        'pct': pct,
-    })
 
 
 @login_required

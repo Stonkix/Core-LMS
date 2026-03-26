@@ -1,6 +1,6 @@
 {% extends "core/base.html" %}
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid py-4">
 
     <div class="d-flex align-items-center gap-3 mb-4">
         <a href="{% url 'course_builder' course.id %}" class="btn btn-outline-secondary btn-sm">← В конструктор</a>
@@ -13,35 +13,15 @@
     </div>
     {% endif %}
 
-    <!-- Индикатор шагов -->
-    <div class="d-flex align-items-center gap-2 mb-4">
-        <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
-                 id="step1-circle"
-                 style="width:32px;height:32px;background:#0d6efd;color:#fff;font-size:.85rem;">1</div>
-            <span class="fw-semibold" id="step1-label">Настройки теста</span>
-        </div>
-        <div class="flex-grow-1 border-top mx-2"></div>
-        <div class="d-flex align-items-center gap-2">
-            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold"
-                 id="step2-circle"
-                 style="width:32px;height:32px;background:#e9ecef;color:#6c757d;font-size:.85rem;">2</div>
-            <span class="text-muted" id="step2-label">Вопросы</span>
-        </div>
-    </div>
-
-    <!-- novalidate — вся валидация в JS, браузерная отключена -->
-    <form method="post" id="quizCreateForm" novalidate>
+    <form method="post" id="quizCreateForm">
         {% csrf_token %}
-        {% if section_id %}
-        <input type="hidden" name="section_id" value="{{ section_id }}">
-        {% endif %}
-        <input type="hidden" name="block_title" id="block_title_input" value="{{ block_title }}">
+        {% if section_id %}<input type="hidden" name="section_id" value="{{ section_id }}">{% endif %}
 
-        <!-- ШАГ 1 — Настройки теста -->
-        <div id="step1">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
+        <div class="row g-4">
+
+            <!-- ══ ЛЕВАЯ КОЛОНКА — Настройки ══ -->
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm p-4 sticky-top" style="top:20px;">
                     <h5 class="fw-bold mb-4">Настройки теста</h5>
 
                     <div class="mb-3">
@@ -66,603 +46,221 @@
                         <div class="form-text">Каждый студент получит вопросы в случайном порядке.</div>
                     </div>
 
+                    <!-- Таймер -->
                     <div class="p-3 bg-light rounded-3 border mb-3">
                         <h6 class="fw-bold mb-3 small text-uppercase text-muted">
                             <i class="bi bi-hourglass-split me-2"></i>Ограничение времени
                         </h6>
-                        <div class="d-flex align-items-center gap-2" style="max-width:260px;">
+                        <div class="d-flex align-items-center gap-2">
                             {{ form.time_limit_minutes }}
                             <span class="input-group-text bg-white border rounded-2 px-3 flex-shrink-0">мин</span>
                         </div>
                         <div class="form-text mt-2">
-                            Пусто — тест без ограничения времени. При истечении таймера ответы отправляются автоматически.
+                            Пусто — без ограничения. При истечении таймера ответы отправляются автоматически.
                         </div>
                     </div>
 
-                    <div class="p-3 bg-light rounded-3 border">
+                    <!-- Даты теста -->
+                    <div class="p-3 bg-light rounded-3 border mb-4">
                         <h6 class="fw-bold mb-3 small text-uppercase text-muted">
-                            <i class="bi bi-calendar-range me-2"></i>Период доступности теста
+                            <i class="bi bi-calendar-range me-2"></i>Период доступности
                         </h6>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Открывается</label>
-                                {{ form.available_from }}
-                                <div class="form-text">Пусто — доступен сразу</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Закрывается</label>
-                                {{ form.available_until }}
-                                <div class="form-text">Пусто — без дедлайна</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-grid gap-2 mb-5">
-                <button type="button" class="btn btn-primary btn-lg py-2" id="toStep2Btn">
-                    Далее: добавить вопросы <i class="bi bi-arrow-right ms-2"></i>
-                </button>
-                <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">Отмена</a>
-            </div>
-        </div>
-
-        <!-- ШАГ 2 — Вопросы -->
-        <div id="step2" style="display:none;">
-
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="fw-bold" id="summaryTitle">—</span>
-                        <span class="badge bg-light text-muted border" id="summaryAttempts"></span>
-                        <span class="badge bg-light text-muted border" id="summaryTimer"></span>
-                        <span class="badge bg-light text-muted border d-none" id="summaryShuffle">
-                            <i class="bi bi-shuffle me-1"></i>Перемешивать
-                        </span>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="backToStep1Btn">
-                        <i class="bi bi-pencil me-1"></i>Изменить настройки
-                    </button>
-                </div>
-            </div>
-
-            <div class="row g-4">
-
-                <!-- Левая панель: форма нового вопроса -->
-                <div class="col-lg-5">
-                    <div class="card border-0 shadow-sm p-4 sticky-top" style="top:20px;">
-                        <h5 class="fw-bold mb-4">Новый вопрос</h5>
-
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">ТЕКСТ ВОПРОСА</label>
-                            <!-- Без name и required — это UI-поле, не поле формы -->
-                            <textarea id="newQuestionText" class="form-control" rows="3"
-                                      placeholder="Введите вопрос..."></textarea>
-                            <div id="questionTextError" class="text-danger small mt-1" style="display:none;">
-                                Введите текст вопроса
-                            </div>
+                            <label class="form-label small fw-semibold">Открывается</label>
+                            {{ form.available_from }}
+                            <div class="form-text">Пусто — доступен сразу</div>
                         </div>
-
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label class="form-label small fw-bold text-muted mb-0">ВАРИАНТЫ ОТВЕТОВ</label>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="addChoiceToNewBtn">
-                                    <i class="bi bi-plus-lg me-1"></i>Добавить
-                                </button>
-                            </div>
-                            <div id="newChoicesContainer"></div>
-                            <div id="choicesError" class="text-danger small mt-1" style="display:none;">
-                                Нужно минимум 2 варианта и хотя бы один отмечен правильным
-                            </div>
-                            <div class="form-text mt-1">
-                                Отметьте правильные галочкой.<br>
-                                <span class="text-primary small">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    Несколько галочек → автоматически множественный выбор
-                                </span>
-                            </div>
+                        <div>
+                            <label class="form-label small fw-semibold">Закрывается</label>
+                            {{ form.available_until }}
+                            <div class="form-text">Пусто — без дедлайна</div>
                         </div>
-
-                        <button type="button" class="btn btn-success w-100" id="addQuestionBtn">
-                            <i class="bi bi-plus-circle me-1"></i>Добавить вопрос
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Правая панель: список вопросов -->
-                <div class="col-lg-7">
-                    <div class="card border-0 shadow-sm p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h5 class="fw-bold mb-0">
-                                Вопросы
-                                <span class="badge bg-primary ms-2" id="questionCount">0</span>
-                            </h5>
-                            <small class="text-muted" id="dragHint" style="display:none;">
-                                <i class="bi bi-grip-vertical me-1"></i>Перетащите для сортировки
-                            </small>
-                        </div>
-
-                        <div id="noQuestionsWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3"
-                             style="display:none;">
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                            Добавьте хотя бы один вопрос, чтобы сохранить тест.
-                        </div>
-
-                        <div id="questionsList"></div>
                     </div>
 
-                    <div class="d-grid gap-2 mt-4 mb-5">
+                    <!-- Кнопки -->
+                    <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-success btn-lg py-2" id="submitBtn" disabled>
                             <i class="bi bi-check-circle me-2"></i>Создать тест
                         </button>
-                        <button type="button" class="btn btn-light border" id="backToStep1Btn2">
-                            <i class="bi bi-arrow-left me-1"></i>Назад к настройкам
-                        </button>
+                        <a href="{% url 'course_builder' course.id %}" class="btn btn-light border">
+                            Отмена
+                        </a>
                     </div>
                 </div>
-
             </div>
-        </div>
 
+            <!-- ══ ПРАВАЯ КОЛОНКА — Вопросы ══ -->
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">
+                            Вопросы
+                            <span class="badge bg-primary ms-2" id="questionCount">0</span>
+                        </h5>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addQuestionBtn">
+                            <i class="bi bi-plus-lg me-1"></i>Добавить вопрос
+                        </button>
+                    </div>
+
+                    <div id="noQuestionsWarning" class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Добавьте хотя бы один вопрос, чтобы сохранить тест.
+                    </div>
+
+                    <div id="questionsList"></div>
+                </div>
+            </div>
+
+        </div>
     </form>
 </div>
 
+<template id="questionTemplate">
+    <div class="question-block border rounded-3 p-4 mb-3 bg-light" data-qindex="">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="fw-bold text-muted small question-label">ВОПРОС 1</span>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-question-btn">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+        <div class="mb-3">
+            <textarea name="" class="form-control question-text-input" rows="2"
+                      placeholder="Введите текст вопроса..." required></textarea>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label small fw-bold text-muted mb-0">ВАРИАНТЫ ОТВЕТОВ</label>
+            <button type="button" class="btn btn-sm btn-outline-secondary add-choice-btn">
+                <i class="bi bi-plus-lg me-1"></i>Добавить вариант
+            </button>
+        </div>
+        <div class="choices-container"></div>
+        <div class="form-text mt-1">
+            Отметьте правильные галочкой.
+            <span class="text-primary small">
+                <i class="bi bi-info-circle me-1"></i>
+                Несколько галочек → автоматически множественный выбор
+            </span>
+        </div>
+    </div>
+</template>
+
+<template id="choiceTemplate">
+    <div class="choice-row d-flex align-items-center gap-2 bg-white border rounded-3 p-2 mb-2">
+        <input type="text" class="form-control form-control-sm choice-text-input"
+               placeholder="Вариант..." required style="min-width:0;">
+        <label class="correct-toggle d-flex align-items-center gap-1 flex-shrink-0
+                      px-2 py-1 rounded-2 border small" style="cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" class="correct-checkbox" value="1"
+                   style="width:15px;height:15px;accent-color:#198754;cursor:pointer;">
+            <i class="bi bi-check2"></i> Верный
+        </label>
+        <button type="button" class="btn btn-sm btn-light border flex-shrink-0 remove-choice-btn">
+            <i class="bi bi-x"></i>
+        </button>
+    </div>
+</template>
+
 <style>
-.question-card {
-    transition: box-shadow .15s, opacity .15s;
-    cursor: default;
-    user-select: none;
-}
-.question-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1) !important; }
-.question-card.dragging { opacity: .4; }
-.question-card.drag-over { border: 2px dashed #0d6efd !important; background: #f0f6ff !important; }
-
-.choice-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin-bottom: 6px;
-    transition: border-color .15s;
-}
-.choice-row:focus-within { border-color: #0d6efd; }
-
-.correct-toggle {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-shrink: 0;
-    cursor: pointer;
-    padding: 3px 8px;
-    border-radius: 6px;
-    border: 1.5px solid #e2e8f0;
-    background: #f8fafc;
-    transition: all .15s;
-    font-size: .8rem;
-    color: #94a3b8;
-    white-space: nowrap;
-    margin-bottom: 0;
-}
-.correct-toggle input[type="checkbox"] {
-    width: 15px;
-    height: 15px;
-    accent-color: #198754;
-    cursor: pointer;
-}
-.correct-toggle.is-correct {
-    border-color: #198754 !important;
-    background: #d1fae5 !important;
-    color: #065f46 !important;
-    font-weight: 600;
-}
-.drag-handle { cursor: grab; opacity: .35; transition: opacity .15s; }
-.question-card:hover .drag-handle { opacity: .75; }
+.correct-toggle { background:#f8fafc; color:#94a3b8; border-color:#e2e8f0 !important; transition:all .15s; }
+.correct-toggle.is-correct { background:#d1fae5 !important; border-color:#198754 !important; color:#065f46 !important; font-weight:600; }
+.question-block { transition: box-shadow .15s; }
+.question-block:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08) !important; }
 </style>
 
 <script>
 (function () {
-
-    /* ══ DOM refs ══════════════════════════════════════════════ */
     const form       = document.getElementById('quizCreateForm');
     const list       = document.getElementById('questionsList');
     const countBadge = document.getElementById('questionCount');
     const submitBtn  = document.getElementById('submitBtn');
     const warning    = document.getElementById('noQuestionsWarning');
-    const dragHint   = document.getElementById('dragHint');
+    const qTmpl      = document.getElementById('questionTemplate');
+    const cTmpl      = document.getElementById('choiceTemplate');
 
-    const step1El     = document.getElementById('step1');
-    const step2El     = document.getElementById('step2');
-    const step1Circle = document.getElementById('step1-circle');
-    const step1Label  = document.getElementById('step1-label');
-    const step2Circle = document.getElementById('step2-circle');
-    const step2Label  = document.getElementById('step2-label');
-
-    const newQuestionText     = document.getElementById('newQuestionText');
-    const newChoicesContainer = document.getElementById('newChoicesContainer');
-    const questionTextError   = document.getElementById('questionTextError');
-    const choicesError        = document.getElementById('choicesError');
-
-
-    /* ══ ШАГ 1 / ШАГ 2 ════════════════════════════════════════ */
-
-    function goToStep2() {
-        const titleInput = document.querySelector('[name="title"]');
-        if (!titleInput || !titleInput.value.trim()) {
-            if (titleInput) { titleInput.classList.add('is-invalid'); titleInput.focus(); }
-            return;
-        }
-        titleInput.classList.remove('is-invalid');
-
-        document.getElementById('summaryTitle').textContent = titleInput.value.trim();
-
-        const attempts = document.querySelector('[name="max_attempts"]');
-        document.getElementById('summaryAttempts').textContent =
-            (attempts && attempts.value == '0') ? '∞ попыток'
-            : (attempts ? attempts.value + ' попыток' : '');
-
-        const timer = document.querySelector('[name="time_limit_minutes"]');
-        document.getElementById('summaryTimer').textContent =
-            (timer && timer.value) ? timer.value + ' мин' : 'Без таймера';
-
-        const shuffle = document.querySelector('[name="shuffle_questions"]');
-        document.getElementById('summaryShuffle').classList.toggle('d-none', !(shuffle && shuffle.checked));
-
-        step1El.style.display = 'none';
-        step2El.style.display = '';
-
-        step1Circle.style.background = '#198754';
-        step1Circle.style.color = '#fff';
-        step1Circle.innerHTML = '<i class="bi bi-check-lg" style="font-size:.8rem;"></i>';
-        step1Label.classList.remove('fw-semibold');
-        step1Label.classList.add('text-success');
-        step2Circle.style.background = '#0d6efd';
-        step2Circle.style.color = '#fff';
-        step2Label.classList.remove('text-muted');
-        step2Label.classList.add('fw-semibold');
+    function updateSubmitState() {
+        const n = list.querySelectorAll('.question-block').length;
+        countBadge.textContent = n;
+        submitBtn.disabled = n === 0;
+        warning.style.display = n > 0 ? 'none' : '';
     }
 
-    function goToStep1() {
-        step2El.style.display = 'none';
-        step1El.style.display = '';
-        step1Circle.style.background = '#0d6efd';
-        step1Circle.style.color = '#fff';
-        step1Circle.innerHTML = '1';
-        step1Label.classList.add('fw-semibold');
-        step1Label.classList.remove('text-success');
-        step2Circle.style.background = '#e9ecef';
-        step2Circle.style.color = '#6c757d';
-        step2Label.classList.add('text-muted');
-        step2Label.classList.remove('fw-semibold');
-    }
-
-    document.getElementById('toStep2Btn').addEventListener('click', goToStep2);
-    document.getElementById('backToStep1Btn').addEventListener('click', goToStep1);
-    document.getElementById('backToStep1Btn2').addEventListener('click', goToStep1);
-
-
-    /* ══ ЛЕВАЯ ПАНЕЛЬ — добавление вариантов ════════════════════
-       Все инпуты создаются через createElement БЕЗ name и БЕЗ
-       required, чтобы браузерная валидация не трогала их.
-    ═══════════════════════════════════════════════════════════ */
-
-    let newChoiceRows   = [];  // [{id, el, textInput, cb}]
-    let newChoiceCounter = 0;
-
-    function makeChoiceRow() {
-        newChoiceCounter++;
-        const cid = newChoiceCounter;
-
-        const div = document.createElement('div');
-        div.className = 'choice-row';
-
-        // Текстовое поле — БЕЗ name, БЕЗ required
-        const textInput = document.createElement('input');
-        textInput.type = 'text';
-        textInput.className = 'form-control form-control-sm';
-        textInput.placeholder = `Вариант ${newChoiceRows.length + 1}`;
-
-        // Тогл «Верный»
-        const label = document.createElement('label');
-        label.className = 'correct-toggle';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.value = '1';
-        cb.addEventListener('change', () => label.classList.toggle('is-correct', cb.checked));
-        const icon = document.createElement('i');
-        icon.className = 'bi bi-check2';
-        label.appendChild(cb);
-        label.appendChild(icon);
-        label.appendChild(document.createTextNode(' Верный'));
-
-        // Кнопка удалить
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn btn-sm btn-light border flex-shrink-0';
-        btn.title = 'Удалить вариант';
-        btn.innerHTML = '<i class="bi bi-x"></i>';
-        btn.addEventListener('click', () => {
-            newChoiceRows = newChoiceRows.filter(r => r.cid !== cid);
-            div.remove();
-            reindexNewChoices();
+    function addChoice(container, qIdx, cIdx) {
+        const node = cTmpl.content.cloneNode(true);
+        const row  = node.querySelector('.choice-row');
+        const textInput   = row.querySelector('.choice-text-input');
+        const checkbox    = row.querySelector('.correct-checkbox');
+        const toggleLabel = row.querySelector('.correct-toggle');
+        const removeBtn   = row.querySelector('.remove-choice-btn');
+        textInput.name = 'q' + qIdx + '_choice_text_' + cIdx;
+        checkbox.name  = 'q' + qIdx + '_choice_correct_' + cIdx;
+        checkbox.addEventListener('change', () => {
+            toggleLabel.classList.toggle('is-correct', checkbox.checked);
         });
-
-        div.appendChild(textInput);
-        div.appendChild(label);
-        div.appendChild(btn);
-        newChoicesContainer.appendChild(div);
-
-        const row = {cid, el: div, textInput, cb};
-        newChoiceRows.push(row);
-        reindexNewChoices();
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            reindexChoices(container, qIdx);
+        });
+        container.appendChild(row);
     }
 
-    function reindexNewChoices() {
-        newChoiceRows.forEach((r, i) => {
-            r.textInput.placeholder = `Вариант ${i + 1}`;
+    function reindexChoices(container, qIdx) {
+        container.querySelectorAll('.choice-row').forEach((row, i) => {
+            const n = i + 1;
+            row.querySelector('.choice-text-input').name        = 'q' + qIdx + '_choice_text_' + n;
+            row.querySelector('.choice-text-input').placeholder = 'Вариант ' + n;
+            row.querySelector('.correct-checkbox').name         = 'q' + qIdx + '_choice_correct_' + n;
         });
     }
 
-    function resetPanel() {
-        newQuestionText.value = '';
-        newQuestionText.classList.remove('is-invalid');
-        questionTextError.style.display = 'none';
-        choicesError.style.display = 'none';
-        newChoicesContainer.innerHTML = '';
-        newChoiceRows = [];
-        newChoiceCounter = 0;
-        makeChoiceRow();
-        makeChoiceRow();
+    function addQuestion() {
+        const qIdx  = Date.now();
+        const node  = qTmpl.content.cloneNode(true);
+        const block = node.querySelector('.question-block');
+        block.dataset.qindex = qIdx;
+        const qNum = list.querySelectorAll('.question-block').length + 1;
+        block.querySelector('.question-label').textContent = 'ВОПРОС ' + qNum;
+        block.querySelector('.question-text-input').name   = 'q' + qIdx + '_text';
+        block.querySelector('.remove-question-btn').addEventListener('click', () => {
+            block.remove();
+            renumberQuestions();
+            updateSubmitState();
+        });
+        const choicesContainer = block.querySelector('.choices-container');
+        block.querySelector('.add-choice-btn').addEventListener('click', () => {
+            const nextIdx = choicesContainer.querySelectorAll('.choice-row').length + 1;
+            addChoice(choicesContainer, qIdx, nextIdx);
+        });
+        addChoice(choicesContainer, qIdx, 1);
+        addChoice(choicesContainer, qIdx, 2);
+        list.appendChild(block);
+        updateSubmitState();
     }
 
-    document.getElementById('addChoiceToNewBtn').addEventListener('click', makeChoiceRow);
-
-    // Начальные 2 варианта
-    makeChoiceRow();
-    makeChoiceRow();
-
-
-    /* ══ КНОПКА «ДОБАВИТЬ ВОПРОС» ══════════════════════════════ */
-
-    let qCounter = 0;
-
-    document.getElementById('addQuestionBtn').addEventListener('click', function () {
-        let valid = true;
-
-        // Проверка текста вопроса
-        const text = newQuestionText.value.trim();
-        if (!text) {
-            newQuestionText.classList.add('is-invalid');
-            questionTextError.style.display = 'block';
-            valid = false;
-        } else {
-            newQuestionText.classList.remove('is-invalid');
-            questionTextError.style.display = 'none';
-        }
-
-        // Проверка вариантов: минимум 2 непустых + хотя бы 1 правильный
-        const filled   = newChoiceRows.filter(r => r.textInput.value.trim());
-        const hasRight = filled.some(r => r.cb.checked);
-        if (filled.length < 2 || !hasRight) {
-            choicesError.style.display = 'block';
-            valid = false;
-        } else {
-            choicesError.style.display = 'none';
-        }
-
-        if (!valid) return;
-
-        qCounter++;
-        const qIdx = qCounter;
-        const choices = newChoiceRows
-            .map(r => ({text: r.textInput.value.trim(), correct: r.cb.checked}))
-            .filter(c => c.text);
-
-        renderCard(qIdx, text, choices);
-        updateState();
-        resetPanel();
-    });
-
-
-    /* ══ РЕНДЕР КАРТОЧКИ ════════════════════════════════════════
-       ВАЖНО: все узлы создаём через createElement.
-       innerHTML += убивает ранее добавленные DOM-узлы —
-       поэтому не используем его на card ни разу.
-    ═══════════════════════════════════════════════════════════ */
-
-    function renderCard(qIdx, text, choices) {
-        // Убираем заглушку
-        const empty = list.querySelector('.empty-msg');
-        if (empty) empty.remove();
-
-        const isMulti = choices.filter(c => c.correct).length > 1;
-        const num     = list.querySelectorAll('.question-card').length + 1;
-
-        const card = document.createElement('div');
-        card.className = 'question-card mb-3 p-3 border rounded-3 bg-light';
-        card.dataset.qindex = qIdx;
-        card.draggable = true;
-
-        /* Скрытые поля — добавляем ПЕРВЫМИ, через createElement */
-        addHidden(card, `q${qIdx}_text`, text);
-        choices.forEach((c, i) => {
-            addHidden(card, `q${qIdx}_choice_text_${i + 1}`, c.text);
-            addHidden(card, `q${qIdx}_choice_correct_${i + 1}`, c.correct ? '1' : '0');
-        });
-
-        /* Заголовок карточки */
-        const header = document.createElement('div');
-        header.className = 'd-flex justify-content-between align-items-start mb-2';
-
-        const leftWrap = document.createElement('div');
-        leftWrap.className = 'd-flex align-items-start gap-2 flex-grow-1';
-
-        const gripIcon = document.createElement('i');
-        gripIcon.className = 'bi bi-grip-vertical text-muted mt-1 drag-handle';
-        gripIcon.style.cssText = 'font-size:1.1rem;flex-shrink:0;';
-
-        const textWrap = document.createElement('div');
-
-        const label = document.createElement('span');
-        label.className = 'fw-semibold q-label';
-        label.appendChild(document.createTextNode(`${num}. ${text}`));
-        textWrap.appendChild(label);
-
-        if (isMulti) {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-info-subtle text-info border border-info-subtle ms-1 small';
-            badge.textContent = 'мульти';
-            textWrap.appendChild(badge);
-        }
-
-        leftWrap.appendChild(gripIcon);
-        leftWrap.appendChild(textWrap);
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn btn-sm btn-outline-danger ms-2 flex-shrink-0';
-        delBtn.innerHTML = '<i class="bi bi-trash3"></i>';
-        delBtn.addEventListener('click', () => {
-            card.remove();
-            renumberCards();
-            updateState();
-        });
-
-        header.appendChild(leftWrap);
-        header.appendChild(delBtn);
-        card.appendChild(header);
-
-        /* Список вариантов */
-        const ul = document.createElement('ul');
-        ul.className = 'list-unstyled mb-0 ms-4';
-        choices.forEach(c => {
-            const li = document.createElement('li');
-            li.className = 'small py-1 d-flex align-items-center gap-2';
-            const ico = document.createElement('i');
-            const sp  = document.createElement('span');
-            if (c.correct) {
-                ico.className = 'bi bi-check-circle-fill text-success';
-                sp.className  = 'text-success fw-semibold';
-            } else {
-                ico.className = 'bi bi-circle text-muted';
-                sp.className  = 'text-muted';
-            }
-            sp.textContent = c.text;
-            li.appendChild(ico);
-            li.appendChild(sp);
-            ul.appendChild(li);
-        });
-        card.appendChild(ul);
-
-        initDrag(card);
-        list.appendChild(card);
-    }
-
-    function addHidden(parent, name, value) {
-        const inp = document.createElement('input');
-        inp.type  = 'hidden';
-        inp.name  = name;
-        inp.value = value;
-        parent.appendChild(inp);
-    }
-
-
-    /* ══ ПЕРЕНУМЕРАЦИЯ ══════════════════════════════════════════ */
-
-    function renumberCards() {
-        list.querySelectorAll('.question-card').forEach((card, i) => {
-            const label = card.querySelector('.q-label');
-            if (!label) return;
-            // Первый childNode — текстовый узел с "N. текст"
-            const tn = label.firstChild;
-            if (tn && tn.nodeType === 3) {
-                tn.textContent = `${i + 1}. ${tn.textContent.replace(/^\d+\.\s*/, '')}`;
-            }
+    function renumberQuestions() {
+        list.querySelectorAll('.question-block').forEach((b, i) => {
+            b.querySelector('.question-label').textContent = 'ВОПРОС ' + (i + 1);
         });
     }
-
-
-    /* ══ СОСТОЯНИЕ ══════════════════════════════════════════════ */
-
-    function updateState() {
-        const count = list.querySelectorAll('.question-card').length;
-        countBadge.textContent = count;
-        submitBtn.disabled = count === 0;
-        dragHint.style.display = count > 1 ? '' : 'none';
-        // warning показываем только при попытке submit без вопросов
-        if (count > 0) warning.style.display = 'none';
-
-        // Заглушка "нет вопросов"
-        if (count === 0 && !list.querySelector('.empty-msg')) {
-            const es = document.createElement('div');
-            es.className = 'empty-msg text-center py-5 text-muted';
-            es.innerHTML = '<i class="bi bi-question-circle display-4 opacity-25 d-block mb-2"></i>'
-                         + 'Вопросов пока нет. Добавьте первый слева.';
-            list.appendChild(es);
-        }
-    }
-
-    updateState();
-
-
-    /* ══ DRAG-AND-DROP ══════════════════════════════════════════ */
-
-    let dragSrc = null;
-
-    function initDrag(card) {
-        card.addEventListener('dragstart', e => {
-            // Не тянем если нажали на кнопку/инпут
-            if (e.target.closest('button, input, textarea, label')) {
-                e.preventDefault();
-                return;
-            }
-            dragSrc = card;
-            requestAnimationFrame(() => card.classList.add('dragging'));
-            e.dataTransfer.effectAllowed = 'move';
-        });
-        card.addEventListener('dragend', () => {
-            card.classList.remove('dragging');
-            list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-            renumberCards();
-            dragSrc = null;
-        });
-    }
-
-    list.addEventListener('dragover', e => {
-        e.preventDefault();
-        if (!dragSrc) return;
-        const card = e.target.closest('.question-card');
-        if (!card || card === dragSrc) return;
-        list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-        card.classList.add('drag-over');
-        const rect = card.getBoundingClientRect();
-        if (e.clientY < rect.top + rect.height / 2) {
-            list.insertBefore(dragSrc, card);
-        } else {
-            list.insertBefore(dragSrc, card.nextSibling);
-        }
-    });
-
-    list.addEventListener('drop', e => {
-        e.preventDefault();
-        list.querySelectorAll('.question-card').forEach(c => c.classList.remove('drag-over'));
-    });
-
-
-    /* ══ SUBMIT ═════════════════════════════════════════════════ */
 
     form.addEventListener('submit', function (e) {
-        const cards = list.querySelectorAll('.question-card');
-        if (cards.length === 0) {
+        const blocks = list.querySelectorAll('.question-block');
+        if (blocks.length === 0) {
             e.preventDefault();
-            warning.style.display = 'flex';
-            warning.scrollIntoView({behavior: 'smooth', block: 'center'});
+            warning.style.display = '';
+            warning.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
+        let countInput = document.getElementById('_question_count');
+        if (!countInput) {
+            countInput = document.createElement('input');
+            countInput.type = 'hidden';
+            countInput.id   = '_question_count';
+            countInput.name = 'question_count';
+            form.appendChild(countInput);
+        }
+        countInput.value = blocks.length;
 
-        // Записываем порядок по текущему DOM (после drag-and-drop)
+        const idxList = [...blocks].map(b => b.dataset.qindex).join(',');
         let idxInput = document.getElementById('_question_indices');
         if (!idxInput) {
             idxInput = document.createElement('input');
@@ -671,9 +269,11 @@
             idxInput.name = 'question_indices';
             form.appendChild(idxInput);
         }
-        idxInput.value = [...cards].map(c => c.dataset.qindex).join(',');
+        idxInput.value = idxList;
     });
 
+    document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
+    updateSubmitState();
 })();
 </script>
 {% endblock %}
