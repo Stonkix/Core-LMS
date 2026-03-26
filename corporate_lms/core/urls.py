@@ -9,6 +9,7 @@ urlpatterns = [
     # Курсы
     path('course/create/', views.create_course, name='create_course'),
     path('course/<int:course_id>/edit/', views.edit_course, name='edit_course'),
+    path('course/<int:course_id>/delete/', views.delete_course, name='delete_course'),
     path('course/builder/<int:course_id>/', views.course_builder, name='course_builder'),
     path('course/<int:course_id>/', views.course_detail, name='course_detail'),
     path('course/<int:course_id>/complete/', views.complete_course, name='complete_course'),

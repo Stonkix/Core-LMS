@@ -93,6 +93,22 @@
                         <a href="{% url 'dashboard' %}" class="btn btn-light border py-2">Отмена</a>
                     </div>
                 </form>
+
+                {% if course %}
+                <hr class="my-4">
+                <div class="p-3 bg-danger-subtle border border-danger-subtle rounded-3">
+                    <h6 class="fw-bold text-danger mb-1">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Опасная зона
+                    </h6>
+                    <p class="text-muted small mb-3">
+                        Удаление курса необратимо. Все разделы, блоки, тесты и результаты студентов будут удалены.
+                    </p>
+                    <button type="button" class="btn btn-outline-danger btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#deleteCourseModal">
+                        <i class="bi bi-trash3 me-1"></i>Удалить курс
+                    </button>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -136,4 +152,38 @@ if (copyBtn) {
     });
 }
 </script>
+
+{% if course %}
+<!-- Модалка подтверждения удаления -->
+<div class="modal fade" id="deleteCourseModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger">
+                    <i class="bi bi-trash3 me-2"></i>Удалить курс?
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Вы собираетесь удалить курс:</p>
+                <p class="fw-bold fs-5 mb-3">«{{ course.title }}»</p>
+                <div class="alert alert-danger small mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    Это действие необратимо. Будут удалены все разделы, блоки,
+                    тесты, вопросы и результаты студентов.
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Отмена</button>
+                <form action="{% url 'delete_course' course.id %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger fw-bold">
+                        <i class="bi bi-trash3 me-1"></i>Да, удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
