@@ -103,9 +103,10 @@ def dashboard(request):
         # Собираем дедлайны
         from django.utils import timezone
         now = timezone.now()
+               # Собираем дедлайны — ТОЛЬКО по активным курсам (фикс №3)
         deadlines = []
 
-        for course in all_available_courses:
+        for course in active_courses:   # ← было all_available_courses
             # Дедлайн самого курса
             if course.available_until:
                 deadlines.append({
@@ -139,16 +140,15 @@ def dashboard(request):
                     'overdue': assignment.deadline < now,
                 })
 
-        # Считаем days_left для каждого
+        # Считаем days_left...
         for d in deadlines:
             diff = d['date'] - now
             d['days_left'] = diff.days if not d['overdue'] else -1
 
-        # Сортируем: сначала просроченные, потом по дате
+        # Сортируем и разделяем на urgent / future
         deadlines.sort(key=lambda x: (not x['overdue'], x['date']))
         deadlines = deadlines[:20]
 
-        # Разделяем на срочные (<=7 дней или просрочены) и будущие (>7 дней)
         urgent_deadlines = [d for d in deadlines if d['overdue'] or d['days_left'] <= 7]
         future_deadlines = [d for d in deadlines if not d['overdue'] and d['days_left'] > 7]
 

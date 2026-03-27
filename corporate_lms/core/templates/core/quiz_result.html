@@ -71,23 +71,31 @@
                 <div class="card-body p-4 text-center">
                     <div class="d-flex justify-content-center gap-3">
                         {% if course %}
-                        <a href="{% url 'course_detail' course.id %}"
-                           class="btn btn-primary px-4 rounded-pill fw-semibold">
+                        <a href="{% url 'course_detail' course.id %}" class="btn btn-primary px-4 rounded-pill fw-semibold">
                             <i class="bi bi-arrow-left me-2"></i>Вернуться к курсу
                         </a>
                         {% else %}
-                        <a href="{% url 'dashboard' %}"
-                           class="btn btn-primary px-4 rounded-pill fw-semibold">
+                        <a href="{% url 'dashboard' %}" class="btn btn-primary px-4 rounded-pill fw-semibold">
                             <i class="bi bi-house me-2"></i>На главную
                         </a>
                         {% endif %}
-                        {% if quiz.max_attempts == 0 or result.attempt_number < quiz.max_attempts %}
-                        <a href="{% url 'take_quiz' quiz.id %}"
-                           class="btn btn-outline-secondary px-4 rounded-pill">
+
+                        <!-- ФИКС №2: кнопка "Пройти ещё раз" если попытки остались -->
+                        {% if quiz.max_attempts == 0 or attempts_used < quiz.max_attempts %}
+                        <a href="{% url 'take_quiz' quiz.id %}" class="btn btn-outline-secondary px-4 rounded-pill">
                             <i class="bi bi-arrow-repeat me-2"></i>Пройти ещё раз
                         </a>
                         {% endif %}
                     </div>
+
+                    <!-- Новый блок: лучший результат за все попытки -->
+                    {% if best and best.id != result.id %}
+                    <div class="mt-4 pt-3 border-top text-center">
+                        <small class="text-muted">Лучший результат за все попытки:</small><br>
+                        <span class="fw-bold fs-4 text-primary">{{ best.score }} / {{ best.max_score }}</span>
+                        <span class="text-muted small ms-2">({{ best.completed_at|date:"d.m.Y H:i" }})</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -125,49 +133,12 @@
 
 <style>
 .result-header { border-bottom: 1px solid rgba(0,0,0,.05); }
-
-.score-num {
-    font-size: 4rem;
-    font-weight: 800;
-    line-height: 1;
-}
-.score-sep {
-    font-size: 2rem;
-    font-weight: 300;
-    margin: 0 .25rem;
-}
-.score-total {
-    font-size: 2rem;
-    font-weight: 400;
-}
-
-.q-num {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: #0d6efd;
-    color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .8rem; font-weight: 700;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.choice-item {
-    padding: .6rem 1rem;
-    border-radius: 8px;
-    font-size: .9rem;
-    border: 1.5px solid transparent;
-}
-.choice-correct {
-    background: #d1fae5;
-    border-color: #6ee7b7;
-    color: #065f46;
-    font-weight: 600;
-}
-.choice-wrong {
-    background: #f8fafc;
-    border-color: #e2e8f0;
-    color: #64748b;
-}
+.score-num { font-size: 4rem; font-weight: 800; line-height: 1; }
+.score-sep { font-size: 2rem; font-weight: 300; margin: 0 .25rem; }
+.score-total { font-size: 2rem; font-weight: 400; }
+.q-num { width: 28px; height: 28px; border-radius: 50%; background: #0d6efd; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.choice-item { padding: .6rem 1rem; border-radius: 8px; font-size: .9rem; border: 1.5px solid transparent; }
+.choice-correct { background: #d1fae5; border-color: #6ee7b7; color: #065f46; font-weight: 600; }
+.choice-wrong { background: #f8fafc; border-color: #e2e8f0; color: #64748b; }
 </style>
 {% endblock %}
