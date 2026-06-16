@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Django-6.0-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Ready-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+</p>
 # Corporate LMS (Learning Management System)
 
 Современная платформа для организации корпоративного обучения, обмена знаниями и отслеживания прогресса сотрудников. Проект построен на базе **Django 6.0**, ориентирован на гибкость и простоту управления образовательным контентом.
